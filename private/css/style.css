@@ -1,0 +1,420 @@
+/*
+    ------------------------------------------------------
+    基本設定: 小説を読むのに最も適した配色とフォント
+    ------------------------------------------------------
+*/
+
+/* PCを主な想定とし、一般的な環境で可読性の高いフォントを設定。 */
+:root {
+    /* 背景色は白に近い色、文字色は黒に近い色でコントラストを高くし、長時間の読書に配慮 */
+    --color-background: #F8F8F8; /* わずかに灰色がかった白 */
+    --color-text: #222222;       /* 濃いグレー */
+    --color-link: #0070B0;       /* リンク色 */
+    --color-link-hover: #00568B; /* ホバー時のリンク色 */
+    --color-border: #DDDDDD;     /* 区切り線などの境界線色 */
+    
+    /* フォント設定: OS標準の読みやすい日本語フォントを優先 */
+    --font-family-body: 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif;
+    --font-family-serif: 'Times New Roman', 'serif'; /* 本文はゴシック体とし、必要に応じて明朝体を使用 */
+    
+    /* コンテンツ表示幅 */
+    --content-max-width: 1200px;
+    
+    /* 標準マージン */
+    --margin-lg: 3rem;   /* 48px */
+    --margin-md: 1.5rem; /* 24px */
+    --margin-sm: 0.5rem; /* 8px */
+
+    /* サイトヘッダの高さ */
+    --header-height: 4rem; 
+}
+
+body {
+    background-color: var(--color-background);
+    color: var(--color-text);
+    font-family: var(--font-family-body);
+    line-height: 1.8;
+    margin: 0;
+    padding-top: var(--header-height); /* bodyのトップパディングでサイトヘッダ分のスペースを確保 */
+}
+
+/* リンク付きテキストのホバー時の下線表示 */
+a {
+    color: var(--color-link);
+    text-decoration: none; /* 通常時は下線を非表示 */
+}
+
+a:hover {
+    color: var(--color-link-hover);
+    text-decoration: underline; /* ホバー時に下線を表示 */
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 0.15em 0.9em;
+    margin: 0.1em 0;
+    border-radius: 999px; /* 楕円 */
+    font-size: 0.85rem;
+    font-weight: 600;
+    border: 2px solid currentColor;
+    line-height: 1.6;
+    white-space: nowrap;
+}
+
+/* 連載中: 目に入る明るめの色 */
+.status-ongoing {
+    color: #00897b;
+    background-color: #e0f7fa;
+}
+
+/* 完結済: 落ち着いた安心感のある色 */
+.status-complete {
+    color: #3949ab;
+    background-color: #e8eaf6;
+}
+
+/* 更新停止: 目立つがきつすぎない注意色 */
+.status-paused {
+    color: #c62828;
+    background-color: #ffebee;
+}
+
+/* その他ステータスが来たときの保険 */
+.status-other {
+    color: #555;
+    background-color: #f1f1f1;
+}
+
+/*
+    ------------------------------------------------------
+    ヘッダー (サイトヘッダ) - 高さ位置を固定
+    ------------------------------------------------------
+*/
+
+/* サイトヘッダは全ページで高さ位置を固定 */
+.site-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background-color: white; /* ヘッダ背景色 */
+    border-bottom: 1px solid var(--color-border);
+    z-index: 1000; /* 他のコンテンツに覆い隠されないように z-index を高くする */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: var(--margin-sm) 0; 
+}
+
+.site-header-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* 中央揃え */
+    padding: 0; 
+    max-width: var(--content-max-width);
+    margin: 0 auto;
+    width: 100%; /* 最大幅まで広げる */
+}
+
+.site-name {
+    margin: 0;
+    font-size: 1.5rem; /* 目立つフォントサイズ */
+    font-weight: bold;
+}
+
+.site-name a {
+    color: var(--color-text);
+}
+
+.last-update {
+    margin: 0.1rem 0 0 0; 
+    font-size: 0.8rem; /* サイト名より目立たない */
+    color: #666666;
+}
+
+/* メインコンテンツラッパー */
+.content-wrapper {
+    max-width: var(--content-max-width);
+    margin: var(--margin-sm) auto; /* ページの上下マージン */
+    padding: 0 var(--margin-md); /* スマホ対応のための左右パディング */
+}
+
+/*
+    ------------------------------------------------------
+    見出し・コンテンツ共通レイアウト
+    ------------------------------------------------------
+*/
+
+.section-title {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #444;
+    margin-top: var(--margin-lg); /* コンテンツ間に適切なマージン */
+    margin-bottom: var(--margin-sm);
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--color-border); 
+}
+
+
+/*
+    ------------------------------------------------------
+    トップページ
+    ------------------------------------------------------
+*/
+
+/* 自己紹介セクション */
+.self-introduction {
+    margin-top: 0; 
+}
+
+.intro-body {
+    padding-left: var(--margin-md); /* 自己紹介本文のインデント */
+}
+
+.intro-body p {
+    margin: 0;
+    text-align: justify;
+}
+
+/* 小説一覧セクション */
+.novel-list {
+    margin-top: var(--margin-sm);
+}
+
+.novel-item {
+    margin-top: var(--margin-sm);
+    padding-left: var(--margin-md); /* 小説タイトルと自己紹介本文の左開始位置が合うように調整 */
+}
+
+.novel-title {
+    font-size: 1.1rem;
+    margin-bottom: var(--margin-sm);
+}
+
+.novel-details {
+    padding-left: var(--margin-md); /* 小説タイトルからのインデント */
+}
+
+.novel-details p {
+    margin: var(--margin-sm) 0;
+    font-size: 1rem;
+}
+
+.novel-details .abstract {
+    font-size: 1rem;
+    line-height: 1.5;
+}
+
+.novel-details .status {
+    font-size: 1rem;
+}
+
+.novel-details .tags, .novel-details .metadata {
+    color: #666;
+    font-size: 0.8rem;
+}
+
+.separator {
+    border: 0;
+    border-top: 1px solid var(--color-border);
+    margin: var(--margin-sm) 0;
+}
+
+
+/*
+    ------------------------------------------------------
+    小説トップページ
+    ------------------------------------------------------
+*/
+
+/* 小説タイトル欄の固定要素 */
+.novel-info-header {
+    position: sticky; /* スクロールしても固定されるように設定 */
+    /* サイトヘッダの下に適切な隙間を空けて配置 (ヘッダの高さ + マージン) */
+    top: calc(var(--header-height) + var(--margin-md));
+    width: 100%;
+    background-color: white;
+    /* タイトル欄の上下幅を狭くするためのpadding調整 */
+    padding: calc(var(--margin-md) / 2) 0;
+    border: 1px solid var(--color-border);
+    z-index: 999;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.novel-info-content {
+    max-width: var(--content-max-width);
+    margin: 0 auto;
+    text-align: center; 
+    padding: 0 var(--margin-md);
+}
+
+.novel-title-main {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.novel-info-content p {
+    /* 内部要素の上下マージンは既存値を維持 */
+    margin: 0.2rem 0;
+    font-size: 1rem;
+    color: #444;
+}
+
+/* 連載ステータスの文字色を小説タイトルと同じ色にする */
+.novel-info-content .status {
+    color: var(--color-text); /* 小説タイトルと同じ色（#222222）になる */
+    font-size: 1rem;
+}
+
+.novel-info-content .tags, .novel-info-content .metadata {
+    color: #666;
+    font-size: 0.8rem;
+}
+
+/* あらすじ本文を、目次本文と同じインデントにする */
+.abstract-section p {
+    padding-left: var(--margin-md);
+}
+
+/* 目次 */
+.toc-body {
+    padding-left: var(--margin-md);
+}
+
+.chapter-title {
+    font-size: 1rem;
+    margin-top: var(--margin-md);
+    margin-bottom: var(--margin-sm);
+    text-decoration: underline;
+}
+
+.toc-body ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.toc-body ul li {
+    font-size: 1rem;
+    line-height: 2;
+}
+
+.toc-body .chapter-link {
+    font-weight: bold;
+    margin-right: var(--margin-sm);
+}
+
+.toc-body .metadata {
+    color: #666;
+    font-size: 0.8rem;
+}
+
+/*
+    ------------------------------------------------------
+    各話本文ページ
+    ------------------------------------------------------
+*/
+
+/* 話のタイトル欄の固定要素 */
+.chapter-info-header {
+    position: sticky;
+    /* サイトヘッダの下に適切な隙間を空けて配置 (ヘッダの高さ + マージン) */
+    top: calc(var(--header-height) + var(--margin-md));
+    width: 100%;
+    background-color: white;
+    /* ★修正: タイトル欄の上下幅をさらに狭くするために padding を調整 */
+    padding: var(--margin-sm) 0; /* 修正前: calc(var(--margin-md) / 2) 0; */
+    border: 1px solid var(--color-border);
+    z-index: 999; 
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.chapter-info-content {
+    max-width: var(--content-max-width);
+    margin: 0 auto;
+    padding: 0 var(--margin-md);
+}
+
+/* 各話タイトル (中央揃えに戻す) */
+.chapter-title-main {
+    font-size: 1.5rem;
+    /* 話のタイトルと話のメタデータのマージンを調整 */
+    margin: 0.1rem 0; /* 上下0.1rem、左右0 */
+    text-align: center; /* 中央揃えに戻す */
+}
+
+/* 各話メタデータ (中央揃えに戻す) */
+.chapter-metadata-chapter { /* 新しいクラス名 */
+    font-size: 0.8rem;
+    color: #666;
+    /* 話のタイトルと話のメタデータのマージンを調整 */
+    margin-bottom: 0.1rem;
+    text-align: center; /* 中央揃えに戻す */
+}
+
+/* 話の移動ナビゲーション (タイトル欄の中に移動) */
+.chapter-navigation {
+    width: 100%;
+    border-top: 1px solid var(--color-border); /* 上部に区切り線を追加 */
+    margin-top: var(--margin-sm); /* 修正前: var(--margin-md); */
+    padding-top: 0.1rem; 
+    padding-bottom: 0.1rem; 
+    z-index: 900;
+}
+
+.nav-list {
+    max-width: var(--content-max-width);
+    margin: 0 auto;
+    padding: 0 var(--margin-md);
+    list-style: none;
+    display: flex;
+    justify-content: space-between;
+    font-size: 1rem;
+}
+
+/* 本文 */
+.novel-body {
+    margin-top: var(--margin-sm); /* 固定要素に隠されないよう適切に調整 */
+    font-size: 1.1rem; 
+    line-height: 2;
+    padding: var(--margin-sm) 0;
+}
+
+.novel-body p {
+    margin-bottom: 1.5em;
+    text-align: justify;
+    text-indent: 1em; /* 行頭下げ */
+}
+
+/*
+    ------------------------------------------------------
+    レスポンシブ対応 (スマホ向け)
+    ------------------------------------------------------
+*/
+
+@media (max-width: 768px) {
+    :root {
+        --margin-lg: 2rem;
+        --margin-md: 1rem;
+        --margin-sm: 0.3rem;
+    }
+    
+    .site-header {
+        padding: var(--margin-sm) 0; /* スマホでも適切な余白を確保 */
+    }
+    
+    .site-name {
+        font-size: 1.4rem;
+    }
+    
+    .content-wrapper {
+        padding: 0 var(--margin-md);
+    }
+
+    /* 小説トップと各話本文の固定ヘッダの位置を調整 */
+    .novel-info-header, .chapter-info-header {
+        /* サイトヘッダの下に適切な隙間を空けて配置 (ヘッダの高さ + マージン) */
+        top: calc(var(--header-height) + var(--margin-md));
+    }
+}
