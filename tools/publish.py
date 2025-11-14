@@ -95,8 +95,13 @@ def apply_ruby_and_markdown(text: str) -> str:
 
 def truncate_outline(outline: str, limit: int = 150) -> str:
     s = outline.replace("\n", " ").strip()
-    return s if len(s) <= limit else s[:limit] + "..."
-
+    if len(s) <= limit:
+        # ルビも含むと厳密には文字数が変わるが、概ね問題ない想定
+        return apply_ruby_and_markdown(s)
+    else:
+        # warning: ルビタグを途中で切る可能性あり
+        truncated = s[:limit] + "..."
+        return apply_ruby_and_markdown(truncated)
 
 def parse_tags(tags_md: str) -> str:
     tags: List[str] = []
@@ -275,11 +280,11 @@ def build_top_page(
         outline_summary = truncate_outline(n.outline)
         last_date = parse_date_from_iso(nc.last_updated_iso) or site_last_date
         status_html = render_status_badge(n.status)
-
+        # warning: `outline_summary` はエスケープ無しで埋め込まれる
         item_html = f"""<article class="novel-item">
     <h3 class="novel-title"><a href="{html_escape(n_pub_dir_name)}/index.html">{title_html}</a></h3>
     <div class="novel-details">
-        <p class="abstract">{html_escape(outline_summary)}</p>
+        <p class="abstract">{outline_summary}</p>
         <p class="status">{status_html}</p>
         <p class="tags">{html_escape(tags_str)}</p>
         <p class="metadata">{last_date} 更新 | 全{n.num_stories}話 | 合計{n.total_length}文字</p>
