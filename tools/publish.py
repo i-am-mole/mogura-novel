@@ -441,8 +441,8 @@ def build_story_page(site_last_date: str, nc: NovelContext, story_index: int) ->
 
     s_ts_iso = nc.story_updated_iso.get(s.number, nc.last_updated_iso)
     s_date = parse_date_from_iso(s_ts_iso) or site_last_date
-
-    body_html = apply_ruby_and_markdown(s.content)
+    # 本文に全角スペースを表示する
+    body_html = apply_ruby_and_markdown(s.content.replace("　", "&#x3000;"))
 
     prev_html = ""
     next_html = ""
