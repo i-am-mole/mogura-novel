@@ -10,3 +10,9 @@
 - [ハーメルン](https://syosetu.org/user/453205/)
 - [カクヨム](https://kakuyomu.jp/users/supermogura)
 - [Creating Writing Space](https://creative-writing-space.com/view/MyPages/index.php?user_id=126)
+
+## 著作権について
+本サイトのコンテンツの著作権は吾輩はもぐらであるに帰属します。以下を禁止します：
+
+- 無断での複製、転載、再配布
+- 改変したうえでの公開
