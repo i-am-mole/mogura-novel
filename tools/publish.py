@@ -5,17 +5,16 @@ import csv
 import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone
+import html
 from pathlib import Path
 from typing import Dict, Tuple, Optional, List
+
+from markdown import markdown as md_to_html
 
 import md
 from story import Story
 from novel import Novel
 from toppage import TopPage
-
-# ---- 外部ライブラリ（使用可） ----
-from markdown import markdown as md_to_html
-
 
 # ====== 設定 ======
 # 公開ドメイン（絶対URLが必要な OGP 用）。未設定でも動くが、SNSカード検証には設定推奨。
@@ -76,7 +75,6 @@ def parse_date_from_iso(ts: str) -> str:
 
 # ====== HTML 共通 ======
 def html_escape(s: str) -> str:
-    import html
     return html.escape(s, quote=True)
 
 
