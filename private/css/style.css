@@ -384,7 +384,6 @@ a:hover {
 .novel-body p {
     margin-bottom: 1.5em;
     text-align: justify;
-    text-indent: 1em; /* 行頭下げ */
 }
 
 /*
