@@ -514,7 +514,7 @@ def main():
     history_path = root / "data" / "update_history.csv"
 
     # TopPage 検証
-    tp_result = TopPage.load_if_valid(self_intro)
+    tp_result = TopPage.load_if_valid(self_intro.relative_to(root))
     if isinstance(tp_result, list):
         for m in tp_result:
             print(m, file=sys.stderr)
@@ -523,7 +523,7 @@ def main():
 
     # 履歴
     history = load_history(history_path)
-    now_iso = datetime.now(timezone.utc).isoformat()
+    now_iso = datetime.now(timezone.utc).isoformat(timespec="seconds")
 
     # トップページ
     index_html, novel_contexts, site_last_date = build_top_page(root, tp, history, now_iso)
