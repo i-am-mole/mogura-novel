@@ -15,7 +15,7 @@
 │ └─ <小説用ディレクトリ>  
 │  ├── index.md # 小説トップ  
 │  ├── その他 .md ファイル  
-├─ public/ # SSG によって生成される公開用 HTML  
+├─ docs/ # SSG によって生成される公開用 HTML  
 ├─ data/ # 更新履歴など、サイトメンテナンスに必要なデータ  
 └─ （その他、README.md やスクリプト等）  
 
@@ -25,7 +25,7 @@
 
 | ブランチ | 用途 |
 |-----------|------|
-| `main` | 公開用ブランチ。`public/` の内容がこのまま GitHub Pages で配信される |
+| `main` | 公開用ブランチ。`docs/` の内容がこのまま GitHub Pages で配信される |
 | 作業ブランチ | 一時的な作業単位。作業完了後に `main` にマージして削除 |
 
 `main` は保護対象（直接 push 禁止）とし、作業は必ず別ブランチで行う。
@@ -67,13 +67,13 @@ git switch -c content/mywork-add-ep05
 python tools/publish.py
 ```
 
-- public/ と data/update_history.csv が再生成される。
+- docs/ と data/update_history.csv が再生成される。
 
 ### 4. コミット
 private/ と SSG の生成物をコミットする
 
 ```bash
-git add -A private/ public/ data/update_history.csv
+git add -A private/ docs/ data/update_history.csv
 git commit -m "publish: update source and generated site"
 ```
 
