@@ -134,12 +134,12 @@ def absolute_url(path_from_root: str) -> Optional[str]:
 
 def choose_og_image(novel_dirname: Optional[str]) -> str:
     """
-    /public をサイトルートとみなし、/ogp/<novel>.png → /ogp/default.png
+    /docs をサイトルートとみなし、/ogp/<novel>.png → /ogp/default.png
     → /apple-touch-icon.png → /favicon-32x32.png の順で存在するものを返す。
     返り値は「/」から始まるサイトルート相対パス。
     """
     root = Path(__file__).resolve().parents[1]
-    public = root / "public"
+    public = root / "docs"
     candidates = []
     if novel_dirname:
         candidates.append(public / "ogp" / f"{novel_dirname}.png")
@@ -241,7 +241,7 @@ def build_top_page(
         nc = NovelContext(
             novel=novel,
             private_dir=ndir,
-            public_dir=root / "public" / ndir.name,
+            public_dir=root / "docs" / ndir.name,
             last_updated_iso=n_last_iso,
             story_updated_iso=story_updated_iso,
             index_to_story=index_to_story,
@@ -500,7 +500,7 @@ def copy_style(root: Path):
     src = root / "private" / "css"/ "style.css"
     if not src.is_file():
         raise FileNotFoundError(f"Style file not found: {src}")
-    dst_dir = root / "public" / "css"
+    dst_dir = root / "docs" / "css"
     dst_dir.mkdir(parents=True, exist_ok=True)
     dst = dst_dir / "style.css"
     dst.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
@@ -510,7 +510,7 @@ def main():
     root = Path(__file__).resolve().parents[1]  # tools/ の一つ上=プロジェクトルート
     private_dir = root / "private"
     self_intro = private_dir / "self_intro.md"
-    public_dir = root / "public"
+    public_dir = root / "docs"
     history_path = root / "data" / "update_history.csv"
 
     # TopPage 検証
