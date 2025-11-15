@@ -5,7 +5,7 @@
 1. [private/](private/) のコンテンツを後述する『自己紹介編集方法』『小説情報編集方法』『本文編集方法』『画像編集方法』に従って編集する
 1. css ファイルを [private/css/style.css](private/css/style.css) に保存する
 1. [venv.bat](venv.bat) を使うなどして [requirements.txt](requirements.txt) に従って Python の仮想環境を作成・有効化する
-1. ルートディレクトリより静的サイト生成ツール (SSG) を `python tools/publish.py` で実行すると SSG がGithub pages の公開対象である [public/](public/) に公開コンテンツ, [data/update_history.csv](data/update_history.csv) にコンテンツの更新日時を出力する
+1. ルートディレクトリより静的サイト生成ツール (SSG) を `python tools/publish.py` で実行すると SSG がGithub pages の公開対象である [docs/](docs/) に公開コンテンツ, [data/update_history.csv](data/update_history.csv) にコンテンツの更新日時を出力する
 
 ブランチの切り方は [DEVELOPMENT.md](DEVELOPMENT.md) に記載の通り。
 
@@ -247,23 +247,23 @@ SSG には不正データと見なされる。
 ## SSG が作成するファイルについて
 SSG は以下の2種類のファイルを作成する。
 
-- **公開コンテンツ**: public/ のファイル
+- **公開コンテンツ**: docs/ のファイル
 - **更新履歴**: data/update_history.csv のこと。もぐらノベルに更新日付を正しく表示するために必要な情報をまとめる
 
 ### 公開コンテンツ
-public/ は Github pages の公開対象である。
+docs/ は Github pages の公開対象である。
 SSG がメンテナンスするためマニュアルでの編集は不要の想定。
 
-サイトトップは [public/index.html](public/index.html) である。
+サイトトップは [docs/index.html](docs/index.html) である。
 
-public/ 直下に private/ 直下と同じ構造で小説毎にディレクトリを切る（小説ディレクトリ）。
+docs/ 直下に private/ 直下と同じ構造で小説毎にディレクトリを切る（小説ディレクトリ）。
 小説ディレクトリに小説を表示するのに必要なファイルを保存していく。
 
 『小説トップ』は index.html となる。
 『話』は話の順番に 1.html, 2.html, ... となる。
 
-css は private/style.css を public/style.css にコピーする。
-Favicon は private/ 直下のファイルを public/ 直下にコピーする。
+css は private/style.css を docs/style.css にコピーする。
+Favicon は private/ 直下のファイルを docs/ 直下にコピーする。
 
 
 ### 更新履歴
