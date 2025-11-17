@@ -253,7 +253,7 @@ def build_top_page(
     header_html = render_site_header("", site_last_date)
 
     # ---- head（favicon / OGP / X）----
-    og_desc = "オリジナル小説を公開する個人サイト。連載中・完結済の作品を掲載。"
+    og_desc = "『もぐらノベル』は吾輩はもぐらであるが趣味で書いた小説を公開する個人サイトです。"
     og_img = choose_og_image(None)
     head_html = build_head(
         title_text="もぐらノベル",
