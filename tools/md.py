@@ -1,6 +1,21 @@
 from typing import Dict
 import re
 
+from markdown import markdown
+
+
+FULL_WIDTH_SPACE = "\u3000"
+
+
+def _full_width_space_placeholder(content: str) -> str:
+    """Return a Markdown-safe placeholder that does not occur in content."""
+    index = 0
+    while True:
+        placeholder = f"MOGURAFULLWIDTHSPACE{index}PLACEHOLDER"
+        if placeholder not in content:
+            return placeholder
+        index += 1
+
 def to_html_ruby(content: str) -> str:
     """
     Convert Ruby annotations in the content to HTML <ruby> tags.
@@ -36,6 +51,20 @@ def to_html_ruby(content: str) -> str:
     pattern = r'\|([^<|]+)<([^>]+)>'
     output = re.sub(pattern, replace_ruby, content)
     return output
+
+
+def to_html(content: str) -> str:
+    """Convert the site's Markdown and custom ruby notation to HTML5.
+
+    Python-Markdown strips U+3000 at the start of a paragraph.  A placeholder
+    selected after checking the input for collisions protects every U+3000
+    during Markdown processing, and is restored in the generated HTML.
+    """
+    placeholder = _full_width_space_placeholder(content)
+    protected_content = content.replace(FULL_WIDTH_SPACE, placeholder)
+    ruby_content = to_html_ruby(protected_content)
+    output = markdown(ruby_content, extensions=["nl2br"], output_format="html")
+    return output.replace(placeholder, FULL_WIDTH_SPACE)
 
 
 class JsonKeyDuplicateError(Exception):

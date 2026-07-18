@@ -87,19 +87,15 @@ def render_site_header(root_prefix: str, last_updated_date: str) -> str:
 </header>"""
 
 
-def apply_ruby_and_markdown(text: str) -> str:
-    return md_to_html(md.to_html_ruby(text))
-
-
 def truncate_outline(outline: str, limit: int = 150) -> str:
     s = outline.replace("\n", " ").strip()
     if len(s) <= limit:
         # ルビも含むと厳密には文字数が変わるが、概ね問題ない想定
-        return apply_ruby_and_markdown(s)
+        return md.to_html(s)
     else:
         # warning: ルビタグを途中で切る可能性あり
         truncated = s[:limit] + "..."
-        return apply_ruby_and_markdown(truncated)
+        return md.to_html(truncated)
 
 def parse_tags(tags_md: str) -> str:
     tags: List[str] = []
@@ -266,7 +262,7 @@ def build_top_page(
     )
 
     # 自己紹介
-    self_intro_html = apply_ruby_and_markdown(tp.self_intro)
+    self_intro_html = md.to_html(tp.self_intro)
 
     # 小説一覧
     novel_items: List[str] = []
@@ -327,7 +323,7 @@ def build_novel_top_page(site_last_date: str, nc: NovelContext) -> str:
     title_html = md.to_html_ruby(n.title)
     tags_str = parse_tags(n.tags)
     last_date = parse_date_from_iso(nc.last_updated_iso) or site_last_date
-    outline_html = apply_ruby_and_markdown(n.outline)
+    outline_html = md.to_html(n.outline)
 
     # 他公開サイト
     if n.has_external_links and n.external_links:
@@ -441,8 +437,7 @@ def build_story_page(site_last_date: str, nc: NovelContext, story_index: int) ->
 
     s_ts_iso = nc.story_updated_iso.get(s.number, nc.last_updated_iso)
     s_date = parse_date_from_iso(s_ts_iso) or site_last_date
-    # 本文に全角スペースを表示する
-    body_html = apply_ruby_and_markdown(s.content.replace("　", "&#x3000;"))
+    body_html = md.to_html(s.content)
 
     prev_html = ""
     next_html = ""

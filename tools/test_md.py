@@ -37,6 +37,58 @@ And one more <ruby>例<rt>れい</rt></ruby> here.
 Finally, no ruby here."""
         self.assertEqual(md.to_html_ruby(content), expected)
 
+
+class TestToHtml(unittest.TestCase):
+    def test_single_line_break_becomes_html5_br(self):
+        content = "一行目です。\n二行目です。"
+        expected = "<p>一行目です。<br>\n二行目です。</p>"
+        self.assertEqual(md.to_html(content), expected)
+
+    def test_blank_line_remains_a_paragraph_separator(self):
+        content = "一段落目です。\n\n二段落目です。"
+        expected = "<p>一段落目です。</p>\n<p>二段落目です。</p>"
+        self.assertEqual(md.to_html(content), expected)
+
+    def test_full_width_spaces_are_preserved(self):
+        content = "　一行目です。\n　二行目です。\n\n　新しい段落です。\n文中の　空白です。"
+        expected = (
+            "<p>　一行目です。<br>\n　二行目です。</p>\n"
+            "<p>　新しい段落です。<br>\n文中の　空白です。</p>"
+        )
+        self.assertEqual(md.to_html(content), expected)
+
+    def test_half_width_spaces_are_not_replaced(self):
+        content = "half width space"
+        self.assertEqual(md.to_html(content), "<p>half width space</p>")
+
+    def test_ruby_line_break_and_full_width_space_work_together(self):
+        content = "　|漢字<かんじ>です。\n　次の|行<ぎょう>です。"
+        expected = (
+            "<p>　<ruby>漢字<rt>かんじ</rt></ruby>です。<br>\n"
+            "　次の<ruby>行<rt>ぎょう</rt></ruby>です。</p>"
+        )
+        self.assertEqual(md.to_html(content), expected)
+
+    def test_other_markdown_syntax_is_preserved(self):
+        content = "## 見出し\n\n    x = 1\n    y = 2\n\n- **強調**\n- [リンク](https://example.com)"
+        expected = (
+            "<h2>見出し</h2>\n"
+            "<pre><code>x = 1\ny = 2\n</code></pre>\n"
+            "<ul>\n<li><strong>強調</strong></li>\n"
+            '<li><a href="https://example.com">リンク</a></li>\n'
+            "</ul>"
+        )
+        self.assertEqual(md.to_html(content), expected)
+
+    def test_placeholder_like_content_does_not_collide(self):
+        content = "MOGURAFULLWIDTHSPACE0PLACEHOLDER　本文"
+        expected = "<p>MOGURAFULLWIDTHSPACE0PLACEHOLDER　本文</p>"
+        self.assertEqual(md.to_html(content), expected)
+
+    def test_conversion_is_stable(self):
+        content = "　|漢字<かんじ>です。\n次の行です。"
+        self.assertEqual(md.to_html(content), md.to_html(content))
+
 def _write_file(dirpath: str, content: str, filename: str = "tmp.md") -> str:
     path = os.path.join(dirpath, filename)
     with open(path, "w", encoding="utf-8") as f:
