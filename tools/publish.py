@@ -2,7 +2,10 @@
 from __future__ import annotations
 
 import csv
+import os
+import shutil
 import sys
+import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import html
@@ -128,25 +131,23 @@ def absolute_url(path_from_root: str) -> Optional[str]:
     return None
 
 
-def choose_og_image(novel_dirname: Optional[str]) -> str:
+def choose_og_image(static_source: Path, novel_dirname: Optional[str]) -> str:
     """
     /docs をサイトルートとみなし、/ogp/<novel>.png → /ogp/default.png
     → /apple-touch-icon.png → /favicon-32x32.png の順で存在するものを返す。
     返り値は「/」から始まるサイトルート相対パス。
     """
-    root = Path(__file__).resolve().parents[1]
-    public = root / "docs"
     candidates = []
     if novel_dirname:
-        candidates.append(public / "ogp" / f"{novel_dirname}.png")
+        candidates.append(static_source / "ogp" / f"{novel_dirname}.png")
     candidates.extend([
-        public / "ogp" / "default.png",
-        public / "apple-touch-icon.png",
-        public / "favicon-32x32.png",
+        static_source / "ogp" / "default.png",
+        static_source / "apple-touch-icon.png",
+        static_source / "favicon-32x32.png",
     ])
     for c in candidates:
         if c.is_file():
-            return "/" + c.relative_to(public).as_posix()
+            return "/" + c.relative_to(static_source).as_posix()
     return "/favicon-32x32.png"
 
 
@@ -207,14 +208,23 @@ class NovelContext:
     index_to_story: Dict[int, Story]   # 1-origin 表示順 -> Story
 
 
+def _relative_history_key(path: Path, root: Path) -> Path:
+    """Return the repository-relative key used by update_history.csv."""
+    p = Path(path)
+    if p.is_absolute():
+        return p.resolve().relative_to(root.resolve())
+    return p
+
+
 def build_top_page(
     root: Path,
+    public_dir: Path,
     tp: TopPage,
     history: History,
     now_iso: str,
 ) -> Tuple[str, List[NovelContext], str]:
     # TopPage（自己紹介）の更新履歴
-    top_rel = tp.path
+    top_rel = _relative_history_key(tp.path, root)
     top_hash = tp.hash()
     top_ts_iso = update_history_entry(history, top_rel, top_hash, now_iso)
 
@@ -222,12 +232,14 @@ def build_top_page(
     for novel, ndir in zip(tp.novels, tp.novel_directories):
         ndir = Path(ndir)
         n_hash = novel.hash()
-        n_ts_iso = update_history_entry(history, novel.path, n_hash, now_iso)
+        n_key = _relative_history_key(novel.path, root)
+        n_ts_iso = update_history_entry(history, n_key, n_hash, now_iso)
 
         story_updated_iso: Dict[int, str] = {}
         index_to_story: Dict[int, Story] = {}
         for idx, s in enumerate(novel.stories, start=1):
-            s_ts_iso = update_history_entry(history, s.path, s.hash(), now_iso)
+            s_key = _relative_history_key(s.path, root)
+            s_ts_iso = update_history_entry(history, s_key, s.hash(), now_iso)
             story_updated_iso[s.number] = s_ts_iso
             index_to_story[idx] = s
 
@@ -237,7 +249,7 @@ def build_top_page(
         nc = NovelContext(
             novel=novel,
             private_dir=ndir,
-            public_dir=root / "docs" / ndir.name,
+            public_dir=public_dir / ndir.name,
             last_updated_iso=n_last_iso,
             story_updated_iso=story_updated_iso,
             index_to_story=index_to_story,
@@ -250,7 +262,7 @@ def build_top_page(
 
     # ---- head（favicon / OGP / X）----
     og_desc = "『もぐらノベル』は吾輩はもぐらであるが趣味で書いた小説を公開する個人サイトです。"
-    og_img = choose_og_image(None)
+    og_img = choose_og_image(root / "private", None)
     head_html = build_head(
         title_text="もぐらノベル",
         root_prefix="",
@@ -379,7 +391,7 @@ def build_novel_top_page(site_last_date: str, nc: NovelContext) -> str:
 
     # ---- head（favicon / OGP / X）----
     og_desc = truncate_outline(n.outline, 120)
-    og_img = choose_og_image(nc.public_dir.name)
+    og_img = choose_og_image(nc.private_dir.parent, nc.public_dir.name)
     head_html = build_head(
         title_text=f"{n.title} - もぐらノベル",
         root_prefix="../",
@@ -457,7 +469,7 @@ def build_story_page(site_last_date: str, nc: NovelContext, story_index: int) ->
     # ---- head（favicon / OGP / X）----
     og_title = f"{title_text} - {n.title}"
     og_desc = truncate_outline(s.content, 110)
-    og_img = choose_og_image(nc.public_dir.name)
+    og_img = choose_og_image(nc.private_dir.parent, nc.public_dir.name)
     head_html = build_head(
         title_text=f"{title_text} - {n.title}",
         root_prefix="../",
@@ -491,70 +503,220 @@ def build_story_page(site_last_date: str, nc: NovelContext, story_index: int) ->
     return page_html
 
 
-def copy_style(root: Path):
+def copy_static_files(
+    root: Path,
+    public_dir: Path,
+    *,
+    newline_reference_dir: Optional[Path],
+) -> None:
+    """Copy static assets whose canonical source lives under private/."""
     src = root / "private" / "css"/ "style.css"
     if not src.is_file():
         raise FileNotFoundError(f"Style file not found: {src}")
-    dst_dir = root / "docs" / "css"
+    dst_dir = public_dir / "css"
     dst_dir.mkdir(parents=True, exist_ok=True)
     dst = dst_dir / "style.css"
-    dst.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
+    _write_generated_html(
+        dst,
+        src.read_text(encoding="utf-8"),
+        public_dir=public_dir,
+        newline_reference_dir=newline_reference_dir,
+    )
 
-
-def main():
-    root = Path(__file__).resolve().parents[1]  # tools/ の一つ上=プロジェクトルート
-    private_dir = root / "private"
-    self_intro = private_dir / "self_intro.md"
-    public_dir = root / "docs"
-    history_path = root / "data" / "update_history.csv"
-
-    # TopPage 検証
-    tp_result = TopPage.load_if_valid(self_intro.relative_to(root))
-    if isinstance(tp_result, list):
-        for m in tp_result:
-            print(m, file=sys.stderr)
-        sys.exit(1)
-    tp: TopPage = tp_result
-
-    # 履歴
-    history = load_history(history_path)
-    now_iso = datetime.now(timezone.utc).isoformat(timespec="seconds")
-
-    # トップページ
-    index_html, novel_contexts, site_last_date = build_top_page(root, tp, history, now_iso)
-    public_dir.mkdir(parents=True, exist_ok=True)
-    (public_dir / "index.html").write_text(index_html, encoding="utf-8")
-
-    # CSS
-    copy_style(root)
-
-    # 各小説トップ & 各話
-    for nc in novel_contexts:
-        nc.public_dir.mkdir(parents=True, exist_ok=True)
-        novel_top_html = build_novel_top_page(site_last_date, nc)
-        (nc.public_dir / "index.html").write_text(novel_top_html, encoding="utf-8")
-
-        total = len(nc.index_to_story)
-        for idx in range(1, total + 1):
-            story_html = build_story_page(site_last_date, nc, idx)
-            out = nc.public_dir / f"{idx}.html"
-            out.write_text(story_html, encoding="utf-8")
-
-    # Favicon コピー
     fnames = [
+        "CNAME",
         "favicon.ico",
         "favicon-16x16.png",
         "favicon-32x32.png",
         "apple-touch-icon.png",
     ]
     for fname in fnames:
-        src = root / "private" / fname
-        if src.is_file():
-            dst = public_dir / fname
-            dst.write_bytes(src.read_bytes())
+        asset = root / "private" / fname
+        if asset.is_file():
+            if fname == "CNAME":
+                # GitHub Pages accepts a single domain without a terminator;
+                # keep the historical tracked bytes stable on regeneration.
+                data = asset.read_text(encoding="utf-8").strip().encode("utf-8")
+            else:
+                data = asset.read_bytes()
+            (public_dir / fname).write_bytes(data)
+
+    ogp_source = root / "private" / "ogp"
+    if ogp_source.is_dir():
+        shutil.copytree(ogp_source, public_dir / "ogp", dirs_exist_ok=True)
+
+
+def _write_generated_html(
+    path: Path,
+    content: str,
+    *,
+    public_dir: Path,
+    newline_reference_dir: Optional[Path],
+) -> None:
+    """Write deterministic HTML while retaining a tracked file's line style."""
+    newline = "\n"
+    if newline_reference_dir is not None:
+        reference = Path(newline_reference_dir) / path.relative_to(public_dir)
+        if reference.is_file():
+            data = reference.read_bytes()
+            crlf = data.count(b"\r\n")
+            bare_lf = data.count(b"\n") - crlf
+            if crlf > bare_lf:
+                newline = "\r\n"
+    path.write_text(content, encoding="utf-8", newline=newline)
+
+
+def generate_site(
+    root: Path,
+    public_dir: Path,
+    history_path: Path,
+    *,
+    history_seed_path: Optional[Path] = None,
+    newline_reference_dir: Optional[Path] = None,
+) -> None:
+    """Generate the complete site into explicit destinations.
+
+    The caller chooses whether the destinations are the tracked publication
+    files or an ignored preview build.  No path is hard-coded to docs/ here.
+    """
+    root = Path(root).resolve()
+    public_dir = Path(public_dir).resolve()
+    history_path = Path(history_path).resolve()
+    if newline_reference_dir is None:
+        candidate_reference = root / "docs"
+        newline_reference_dir = candidate_reference if candidate_reference.is_dir() else None
+    private_dir = root / "private"
+    self_intro = private_dir / "self_intro.md"
+
+    # TopPage 検証
+    tp_result = TopPage.load_if_valid(self_intro)
+    if isinstance(tp_result, list):
+        raise ValueError("\n".join(tp_result))
+    tp: TopPage = tp_result
+
+    # 履歴
+    seed = Path(history_seed_path) if history_seed_path else history_path
+    history = load_history(seed)
+    now_iso = datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+    # トップページ
+    index_html, novel_contexts, site_last_date = build_top_page(
+        root, public_dir, tp, history, now_iso
+    )
+    public_dir.mkdir(parents=True, exist_ok=True)
+    _write_generated_html(
+        public_dir / "index.html",
+        index_html,
+        public_dir=public_dir,
+        newline_reference_dir=newline_reference_dir,
+    )
+
+    # CSS / CNAME / icons / optional OGP assets
+    copy_static_files(
+        root, public_dir, newline_reference_dir=newline_reference_dir
+    )
+
+    # 各小説トップ & 各話
+    for nc in novel_contexts:
+        nc.public_dir.mkdir(parents=True, exist_ok=True)
+        novel_top_html = build_novel_top_page(site_last_date, nc)
+        _write_generated_html(
+            nc.public_dir / "index.html",
+            novel_top_html,
+            public_dir=public_dir,
+            newline_reference_dir=newline_reference_dir,
+        )
+
+        total = len(nc.index_to_story)
+        for idx in range(1, total + 1):
+            story_html = build_story_page(site_last_date, nc, idx)
+            out = nc.public_dir / f"{idx}.html"
+            _write_generated_html(
+                out,
+                story_html,
+                public_dir=public_dir,
+                newline_reference_dir=newline_reference_dir,
+            )
 
     # 履歴保存
     save_history(history_path, history)
+
+
+def _replace_publication(root: Path, staged_docs: Path, staged_history: Path) -> None:
+    """Replace tracked publication outputs, rolling back on any failure."""
+    state_dir = root / ".novel-editor"
+    backup_dir = state_dir / f"publish-backup-{uuid.uuid4().hex}"
+    backup_docs = backup_dir / "docs"
+    backup_history = backup_dir / "update_history.csv"
+    docs = root / "docs"
+    history = root / "data" / "update_history.csv"
+    backup_dir.mkdir(parents=True, exist_ok=False)
+    moved_docs = False
+    moved_history = False
+    installed_docs = False
+    installed_history = False
+    try:
+        if docs.exists():
+            os.replace(docs, backup_docs)
+            moved_docs = True
+        if history.exists():
+            os.replace(history, backup_history)
+            moved_history = True
+        os.replace(staged_docs, docs)
+        installed_docs = True
+        history.parent.mkdir(parents=True, exist_ok=True)
+        os.replace(staged_history, history)
+        installed_history = True
+    except Exception as original_error:
+        rollback_errors: List[str] = []
+        try:
+            if installed_history and history.exists():
+                history.unlink()
+        except Exception as exc:
+            rollback_errors.append(f"新しい更新履歴の除去失敗: {exc}")
+        try:
+            if installed_docs and docs.exists():
+                shutil.rmtree(docs)
+        except Exception as exc:
+            rollback_errors.append(f"新しいdocsの除去失敗: {exc}")
+        try:
+            if moved_history and backup_history.exists():
+                os.replace(backup_history, history)
+        except Exception as exc:
+            rollback_errors.append(f"更新履歴の復元失敗: {exc}")
+        try:
+            if moved_docs and backup_docs.exists():
+                os.replace(backup_docs, docs)
+        except Exception as exc:
+            rollback_errors.append(f"docsの復元失敗: {exc}")
+        if rollback_errors:
+            detail = " / ".join(rollback_errors)
+            raise RuntimeError(f"公開物の置換と復元に失敗しました: {detail}") from original_error
+        raise
+    finally:
+        if installed_docs and installed_history:
+            shutil.rmtree(backup_dir, ignore_errors=True)
+
+
+def main():
+    root = Path(__file__).resolve().parents[1]
+    state_dir = root / ".novel-editor"
+    build_dir = state_dir / f"publish-build-{uuid.uuid4().hex}"
+    staged_docs = build_dir / "docs"
+    staged_history = build_dir / "update_history.csv"
+    try:
+        generate_site(
+            root,
+            staged_docs,
+            staged_history,
+            history_seed_path=root / "data" / "update_history.csv",
+        )
+        _replace_publication(root, staged_docs, staged_history)
+    except Exception as exc:
+        print(str(exc), file=sys.stderr)
+        sys.exit(1)
+    finally:
+        shutil.rmtree(build_dir, ignore_errors=True)
 
 
 if __name__ == "__main__":

@@ -9,6 +9,9 @@
 
 ブランチの切り方は [DEVELOPMENT.md](DEVELOPMENT.md) に記載の通り。
 
+Windowsでは、リポジトリ付属の日本語GUIエディタからもコンテンツを編集できる。
+起動方法と操作方法は [EDITOR.md](EDITOR.md) を参照。
+
 コンテンツには独自の記法により SSG にルビを振らせることができる。詳しくは『独自のルビ記法について』を参照。
 
 ### 自己紹介編集方法
@@ -264,6 +267,8 @@ docs/ 直下に private/ 直下と同じ構造で小説毎にディレクトリ�
 
 css は private/style.css を docs/style.css にコピーする。
 Favicon は private/ 直下のファイルを docs/ 直下にコピーする。
+CNAME は private/CNAME を docs/CNAME にコピーする。
+OGP 画像を用意する場合は private/ogp/ に置き、SSG が docs/ogp/ へコピーする。
 
 
 ### 更新履歴
