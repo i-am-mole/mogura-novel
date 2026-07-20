@@ -17,11 +17,13 @@ class PairListEditor(ttk.Frame):
         raw_value: str,
         kind: str,
         on_change,
+        register_widget,
     ):
         super().__init__(parent)
         self.kind = kind
         self.raw_value = raw_value
         self.on_change = on_change
+        self.register_widget = register_widget
         self.rows: list[tuple[ttk.Frame, ttk.Entry, ttk.Entry]] = []
         self.ruby_widgets: set[tk.Widget] = set()
         ttk.Label(self, text=first_label).grid(row=0, column=0, sticky="w", padx=2)
@@ -67,7 +69,10 @@ class PairListEditor(ttk.Frame):
         first_entry.bind("<KeyRelease>", self.on_change)
         second_entry.bind("<KeyRelease>", self.on_change)
         self.rows.append((row_frame, first_entry, second_entry))
-        if self.kind == "chapters":
+        first_is_ruby = self.kind == "chapters"
+        self.register_widget(first_entry, ruby=first_is_ruby)
+        self.register_widget(second_entry, ruby=False)
+        if first_is_ruby:
             self.ruby_widgets.add(first_entry)
         if notify:
             self.on_change()

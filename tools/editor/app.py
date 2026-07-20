@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Optional
 import re
 import tkinter as tk
+import tkinter.font as tkfont
 from tkinter import messagebox, simpledialog, ttk
 
 from editor.dialogs import ask_new_story, ask_new_work
@@ -29,7 +30,10 @@ class NovelEditorApp:
         self.current_iid: Optional[str] = None
         self.current_doc: Optional[RoundTripDocument] = None
         self.field_widgets: dict[str, tk.Widget] = {}
+        self.content_widgets: set[tk.Widget] = set()
         self.ruby_widgets: set[tk.Widget] = set()
+        self.last_content_widget: Optional[tk.Widget] = None
+        self.content_font_var = tk.StringVar(value="Arial")
         self.tree_refs: dict[str, tuple[str, ...]] = {}
         self.suppress_tree_event = False
         self.status_var = tk.StringVar(value="準備完了")
@@ -59,6 +63,19 @@ class NovelEditorApp:
         ]
         for label, command in buttons:
             ttk.Button(toolbar, text=label, command=command).pack(side="left", padx=2)
+        installed_fonts = sorted(set(tkfont.families(self.window)), key=str.casefold)
+        if "Arial" not in installed_fonts:
+            installed_fonts.insert(0, "Arial")
+        font_box = ttk.Combobox(
+            toolbar,
+            textvariable=self.content_font_var,
+            values=installed_fonts,
+            state="readonly",
+            width=24,
+        )
+        font_box.pack(side="right", padx=(4, 2))
+        font_box.bind("<<ComboboxSelected>>", self._apply_content_font)
+        ttk.Label(toolbar, text="編集フォント").pack(side="right", padx=(12, 0))
 
         paned = ttk.Panedwindow(self.window, orient="horizontal")
         paned.pack(fill="both", expand=True)
@@ -187,7 +204,37 @@ class NovelEditorApp:
         for child in self.editor.winfo_children():
             child.destroy()
         self.field_widgets.clear()
+        self.content_widgets.clear()
         self.ruby_widgets.clear()
+        self.last_content_widget = None
+
+    def _content_font(self) -> tuple[str, int]:
+        return self.content_font_var.get() or "Arial", 11
+
+    def _register_content_widget(self, widget: tk.Widget, *, ruby: bool = False) -> None:
+        widget.configure(font=self._content_font())
+        try:
+            widget.configure(exportselection=False)
+        except tk.TclError:
+            pass
+        widget.bind(
+            "<FocusIn>",
+            lambda _event, target=widget: self._remember_content_widget(target),
+            add="+",
+        )
+        self.content_widgets.add(widget)
+        if ruby:
+            self.ruby_widgets.add(widget)
+
+    def _remember_content_widget(self, widget: tk.Widget) -> None:
+        self.last_content_widget = widget
+
+    def _apply_content_font(self, _event=None) -> None:
+        for widget in tuple(self.content_widgets):
+            try:
+                widget.configure(font=self._content_font())
+            except tk.TclError:
+                self.content_widgets.discard(widget)
 
     def _add_entry(self, row: int, key: str, label: str, value: str, *, ruby=False) -> int:
         ttk.Label(self.editor, text=label).grid(row=row, column=0, sticky="nw", padx=4, pady=5)
@@ -196,8 +243,7 @@ class NovelEditorApp:
         widget.grid(row=row, column=1, sticky="ew", padx=4, pady=5)
         widget.bind("<KeyRelease>", self._content_changed)
         self.field_widgets[key] = widget
-        if ruby:
-            self.ruby_widgets.add(widget)
+        self._register_content_widget(widget, ruby=ruby)
         return row + 1
 
     def _add_text(
@@ -222,8 +268,7 @@ class NovelEditorApp:
         text.bind("<<Paste>>", lambda _e: self.window.after_idle(self._content_changed))
         text.bind("<<Cut>>", lambda _e: self.window.after_idle(self._content_changed))
         self.field_widgets[key] = text
-        if ruby:
-            self.ruby_widgets.add(text)
+        self._register_content_widget(text, ruby=ruby)
         if expand:
             self.editor.rowconfigure(row, weight=1)
         return row + 1
@@ -249,10 +294,10 @@ class NovelEditorApp:
             raw_value=value,
             kind=kind,
             on_change=self._content_changed,
+            register_widget=self._register_content_widget,
         )
         widget.grid(row=row, column=1, sticky="ew", padx=4, pady=5)
         self.field_widgets[key] = widget
-        self.ruby_widgets.update(widget.ruby_widgets)
         return row + 1
 
     def _show_self_intro(self, document: RoundTripDocument) -> None:
@@ -280,6 +325,7 @@ class NovelEditorApp:
         status.grid(row=row, column=1, sticky="ew", padx=4, pady=5)
         status.bind("<<ComboboxSelected>>", self._content_changed)
         self.field_widgets["status"] = status
+        self._register_content_widget(status)
         row += 1
         row = self._add_text(row, "outline", "あらすじ", values.get("outline", ""), height=8, ruby=True)
         row = self._add_pair_table(
@@ -418,7 +464,7 @@ class NovelEditorApp:
     def new_work(self) -> None:
         if not self._confirm_abandon():
             return
-        values = ask_new_work(self.window)
+        values = ask_new_work(self.window, content_font=self._content_font())
         if not values:
             return
         try:
@@ -444,7 +490,7 @@ class NovelEditorApp:
         if not self._confirm_abandon():
             return
         work_slug = self.current_ref[1]
-        values = ask_new_story(self.window)
+        values = ask_new_story(self.window, content_font=self._content_font())
         if not values:
             return
         try:
@@ -524,11 +570,9 @@ class NovelEditorApp:
 
     def insert_ruby(self) -> None:
         widget = self.window.focus_get()
-        pair_ruby = any(
-            isinstance(editor, PairListEditor) and widget in editor.ruby_widgets
-            for editor in self.field_widgets.values()
-        )
-        if widget not in self.ruby_widgets and not pair_ruby:
+        if widget not in self.ruby_widgets:
+            widget = self.last_content_widget
+        if widget not in self.ruby_widgets:
             self.status_var.set("この項目ではルビ入力を使用できません。")
             self.window.bell()
             return

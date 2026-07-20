@@ -5,10 +5,20 @@ from tkinter import ttk, simpledialog
 
 
 class FormDialog(simpledialog.Dialog):
-    def __init__(self, parent, title: str, fields, *, text_fields=(), defaults=None):
+    def __init__(
+        self,
+        parent,
+        title: str,
+        fields,
+        *,
+        text_fields=(),
+        defaults=None,
+        content_font=("Arial", 11),
+    ):
         self.fields = fields
         self.text_fields = set(text_fields)
         self.defaults = defaults or {}
+        self.content_font = content_font
         self.widgets = {}
         self.result = None
         super().__init__(parent, title)
@@ -18,10 +28,20 @@ class FormDialog(simpledialog.Dialog):
         for row, (key, label) in enumerate(self.fields):
             ttk.Label(master, text=label).grid(row=row, column=0, sticky="nw", padx=6, pady=5)
             if key in self.text_fields:
-                widget = tk.Text(master, width=58, height=5, wrap="word", undo=True)
+                widget = tk.Text(
+                    master,
+                    width=58,
+                    height=5,
+                    wrap="word",
+                    undo=True,
+                    font=self.content_font,
+                    exportselection=False,
+                )
                 widget.insert("1.0", self.defaults.get(key, ""))
             else:
-                widget = ttk.Entry(master, width=58)
+                widget = ttk.Entry(
+                    master, width=58, font=self.content_font, exportselection=False
+                )
                 widget.insert(0, self.defaults.get(key, ""))
             widget.grid(row=row, column=1, sticky="nsew", padx=6, pady=5)
             self.widgets[key] = widget
@@ -40,7 +60,7 @@ class FormDialog(simpledialog.Dialog):
         self.result = values
 
 
-def ask_new_work(parent):
+def ask_new_work(parent, *, content_font=("Arial", 11)):
     dialog = FormDialog(
         parent,
         "新しい作品",
@@ -53,11 +73,12 @@ def ask_new_work(parent):
         ],
         text_fields={"tags", "outline"},
         defaults={"tags": "- 一次創作", "status": "連載中"},
+        content_font=content_font,
     )
     return dialog.result
 
 
-def ask_new_story(parent):
+def ask_new_story(parent, *, content_font=("Arial", 11)):
     dialog = FormDialog(
         parent,
         "新しい話",
@@ -69,5 +90,6 @@ def ask_new_story(parent):
         ],
         text_fields={"content"},
         defaults={"number": "0"},
+        content_font=content_font,
     )
     return dialog.result

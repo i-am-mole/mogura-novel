@@ -19,19 +19,36 @@ class TestPreviewGeneration(unittest.TestCase):
             target = Path(directory)
             generate_site(
                 root,
-                target / "docs",
-                target / "history.csv",
+                target / "first-docs",
+                target / "first-history.csv",
                 history_seed_path=root / "data" / "update_history.csv",
             )
-            self.assertEqual((target / "docs" / "CNAME").read_text(encoding="utf-8").strip(), "mogura-novel.com")
-            self.assertTrue((target / "docs" / "index.html").is_file())
-            generated = {
-                p.relative_to(target / "docs"): p.read_bytes()
-                for p in (target / "docs").rglob("*")
+            generate_site(
+                root,
+                target / "second-docs",
+                target / "second-history.csv",
+                history_seed_path=target / "first-history.csv",
+            )
+            self.assertEqual(
+                (target / "first-docs" / "CNAME").read_text(encoding="utf-8").strip(),
+                "mogura-novel.com",
+            )
+            self.assertTrue((target / "first-docs" / "index.html").is_file())
+            first_generated = {
+                p.relative_to(target / "first-docs"): p.read_bytes()
+                for p in (target / "first-docs").rglob("*")
                 if p.is_file()
             }
-            self.assertEqual(generated, docs_before)
-            self.assertEqual((target / "history.csv").read_bytes(), history_before)
+            second_generated = {
+                p.relative_to(target / "second-docs"): p.read_bytes()
+                for p in (target / "second-docs").rglob("*")
+                if p.is_file()
+            }
+            self.assertEqual(second_generated, first_generated)
+            self.assertEqual(
+                (target / "second-history.csv").read_bytes(),
+                (target / "first-history.csv").read_bytes(),
+            )
         docs_after = {p.relative_to(root / "docs"): p.read_bytes() for p in (root / "docs").rglob("*") if p.is_file()}
         self.assertEqual(docs_after, docs_before)
         self.assertEqual((root / "data" / "update_history.csv").read_bytes(), history_before)
