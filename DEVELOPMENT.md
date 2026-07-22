@@ -21,6 +21,8 @@
 
 ## ブランチ運用方針
 
+SSGの更新日、依存関係、ハッシュ、冪等性を変更または検証する場合は [SSG_SPEC.md](SSG_SPEC.md) を参照する。
+
 ### 基本構成
 
 | ブランチ | 用途 |
@@ -68,6 +70,15 @@ python tools/publish.py
 ```
 
 - docs/ と data/update_history.csv が再生成される。
+- 変更なしの再実行では、追跡対象ファイルに新たなGit差分が発生しないことを確認する。
+- 一部コンテンツの変更では、[SSG仕様の依存関係](SSG_SPEC.md#入力と生成物の依存関係) に含まれない作品へ差分が広がっていないことを確認する。
+
+```bash
+git status --short
+git diff --stat
+git diff --minimal
+git diff --check
+```
 
 ### 4. コミット
 private/ と SSG の生成物をコミットする
