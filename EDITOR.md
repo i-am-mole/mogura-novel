@@ -96,6 +96,8 @@ slugは小文字の半角英数字を単一のハイフンで区切った名前�
 .venv\Scripts\python.exe tools\publish.py
 ```
 
+公開時の更新日、入力ごとの更新判定、生成物の依存関係は [SSG_SPEC.md](SSG_SPEC.md) に従います。
+
 公開SSGはサイト全体を `.novel-editor/` 内へ生成し、全処理が成功した場合だけ `docs/` と更新履歴を入れ替えます。生成失敗時は既存の公開物を維持します。
 
 ## 一時領域
