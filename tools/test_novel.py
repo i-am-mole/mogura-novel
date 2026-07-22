@@ -397,7 +397,7 @@ c
 
 
 class TestNovelHash(unittest.TestCase):
-    def test_hash_changes_when_story_changes(self):
+    def test_hash_does_not_change_when_only_story_changes(self):
         with TemporaryDirectory() as d:
             novel_dir = Path(d) / "n"
             index = novel_dir / "index.md"
@@ -431,6 +431,30 @@ A
 cc
 """
             _write(novel_dir / "a.md", s2)
+            novel2 = Novel.load_if_valid(index)
+            self.assertIsInstance(novel2, Novel)
+
+            self.assertEqual(novel1.hash(), novel2.hash())
+            self.assertNotEqual(novel1.legacy_hash(), novel2.legacy_hash())
+
+    def test_hash_changes_when_index_metadata_changes(self):
+        with TemporaryDirectory() as d:
+            novel_dir = Path(d) / "n"
+            index = novel_dir / "index.md"
+            first = """# title
+t
+# tags
+- t
+# status
+連載中
+# outline
+o
+"""
+            _write(index, first)
+            novel1 = Novel.load_if_valid(index)
+            self.assertIsInstance(novel1, Novel)
+
+            _write(index, first.replace("\no\n", "\nchanged\n"))
             novel2 = Novel.load_if_valid(index)
             self.assertIsInstance(novel2, Novel)
 

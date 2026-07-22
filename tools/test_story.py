@@ -147,6 +147,21 @@ not-int
 
 
 class TestStoryHash(unittest.TestCase):
+    def test_hash_normalizes_windows_and_unix_line_endings(self):
+        with TemporaryDirectory() as d:
+            root = Path(d)
+            content = "# title\nタイトル\n# number\n1\n# content\n本文\n"
+            lf = root / "lf.md"
+            crlf = root / "crlf.md"
+            lf.write_bytes(content.encode("utf-8"))
+            crlf.write_bytes(content.replace("\n", "\r\n").encode("utf-8"))
+
+            story_lf = Story.load_if_valid(lf)
+            story_crlf = Story.load_if_valid(crlf)
+            self.assertIsInstance(story_lf, Story)
+            self.assertIsInstance(story_crlf, Story)
+            self.assertEqual(story_lf.hash(), story_crlf.hash())
+
     def test_hash_changes_when_content_changes(self):
         with TemporaryDirectory() as d:
             p1 = Path(d) / "1.md"

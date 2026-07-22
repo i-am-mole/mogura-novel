@@ -1,21 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from itertools import permutations
 from pathlib import Path
-from typing import Tuple, List, Union
+from typing import Iterable, Iterator, Tuple, List, Union
 
 import hashlib
-import os
 
 from novel import Novel
-
-# Novel.status の優先度
-_STATUS_ORDER = {
-    "連載中": 0,
-    "完結済": 1,
-    "更新停止": 2,
-}
-
 
 @dataclass(frozen=True)
 class TopPage:
@@ -79,41 +71,6 @@ class TopPage:
         if errors:
             return errors
 
-        # Novel の並び替え
-        # 優先キー:
-        #   1. Novel の更新日時 (降順)
-        #   2. Novel.status の優先度 (昇順: 連載中 < 完結済 < 更新停止)
-        #   3. Novel.title (昇順)
-        #
-        # 更新日時は index.md および配下話ファイルの mtime の最大値を使う。
-        def novel_last_updated(n: Novel) -> float:
-            times: List[float] = []
-            # index.md
-            try:
-                times.append(os.path.getmtime(n.path))
-            except OSError:
-                pass
-            # story ファイル
-            for s in n.stories:
-                try:
-                    times.append(os.path.getmtime(s.path))
-                except OSError:
-                    pass
-            return max(times) if times else 0.0
-
-        def sort_key(n: Novel):
-            updated = novel_last_updated(n)
-            status_order = _STATUS_ORDER.get(n.status, 999)
-            return (-updated, status_order, n.title)
-
-        novels_sorted = tuple(sorted(novels, key=sort_key))
-        novel_dirs_sorted = tuple(
-            d for _, d in sorted(
-                zip(novels, novel_dirs),
-                key=lambda pair: sort_key(pair[0])
-            )
-        )
-
         # サイトタイトル / URL は仕様に沿って固定値とする
         site_title = "もぐらノベル"
         site_url = "https://www.mogura-novel.com/"
@@ -123,20 +80,36 @@ class TopPage:
             title=site_title,
             url=site_url,
             self_intro=raw.strip(),
-            novels=novels_sorted,
-            novel_directories=tuple(
-                nd for nd in novel_dirs_sorted
-            ),
+            # 更新日時順への並び替えは、ファイルシステムの mtime ではなく
+            # update_history.csv を読める publish.py 側で行う。
+            novels=tuple(novels),
+            novel_directories=tuple(novel_dirs),
         )
 
     def hash(self) -> str:
+        """self_intro.md が表す自己紹介本文のハッシュを計算する。"""
+        return hashlib.sha256(self.self_intro.encode("utf-8")).hexdigest()
+
+    def legacy_hash(self) -> str:
+        """Return the pre-fix aggregate hash used for CSV migration."""
+        return self._legacy_hash_for(self.novels)
+
+    def legacy_hash_candidates(self) -> Iterator[str]:
+        """Return possible hashes from the former mtime-dependent ordering.
+
+        The old implementation hashed novels after sorting them by filesystem
+        mtime. A checkout can lose that order, so migration has to accept every
+        possible order for the small set of works that existed in that format.
         """
-        コンテンツのハッシュを
-        title, self_intro, novels の全 Novel.hash()
-        から計算する。
-        """
+        if len(self.novels) > 8:
+            yield self.legacy_hash()
+            return
+        for items in permutations(self.novels):
+            yield self._legacy_hash_for(items)
+
+    def _legacy_hash_for(self, novels: Iterable[Novel]) -> str:
         parts: List[str] = [self.title, self.self_intro]
-        for n in self.novels:
-            parts.append(n.hash())
+        for novel in novels:
+            parts.append(novel.legacy_hash())
         base = "\n".join(parts)
         return hashlib.sha256(base.encode("utf-8")).hexdigest()

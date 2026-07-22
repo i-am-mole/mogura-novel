@@ -285,10 +285,25 @@ class Novel:
 
     def hash(self) -> str:
         """
-        コンテンツのハッシュを
-        title, tags, status, outline, external_links, chapters,
-        stories の全 Story.hash() から計算する。
+        index.md が表す作品メタデータだけのハッシュを計算する。
+
+        各話はそれぞれの Story.hash() で更新履歴を管理する。ここに各話を
+        含めると、一話の変更が index.md 自身の変更として記録されるため、
+        作品トップの集約更新日時は publish.py 側で別に計算する。
         """
+        parts = [
+            self.title,
+            self.tags,
+            self.status,
+            self.outline,
+            self.external_links or "",
+            repr(self.chapters) if self.chapters else "",
+        ]
+        base = "\n".join(parts)
+        return hashlib.sha256(base.encode("utf-8")).hexdigest()
+
+    def legacy_hash(self) -> str:
+        """Return the pre-fix aggregate hash used for CSV migration."""
         parts = [
             self.title,
             self.tags,

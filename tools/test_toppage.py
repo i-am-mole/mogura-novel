@@ -1,5 +1,3 @@
-import os
-import time
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -119,15 +117,14 @@ BBB
             titles = {n.title for n in tp.novels}
             self.assertEqual(titles, {"小説A", "小説B"})
 
-    def test_novels_sorted_by_updated_status_title(self):
+    def test_novel_discovery_is_independent_of_filesystem_mtime(self):
         with TemporaryDirectory() as d:
             root = Path(d)
             private_dir = root / "private"
             self_intro = private_dir / "self_intro.md"
             _write(self_intro, "自己紹介テキスト")
 
-            # novel_old: 連載中, 以前に更新
-            n_old = private_dir / "novel_old"
+            n_old = private_dir / "z-novel"
             idx_old = """# title
 アルファ
 # tags
@@ -146,13 +143,7 @@ a
 old
 """)
 
-            # 時刻を少し巻き戻す
-            old_time = time.time() - 1000
-            for f in n_old.iterdir():
-                os.utime(f, (old_time, old_time))
-
-            # novel_new: 完結済, 新しい更新
-            n_new = private_dir / "novel_new"
+            n_new = private_dir / "a-novel"
             idx_new = """# title
 ベータ
 # tags
@@ -171,45 +162,15 @@ b
 new
 """)
 
-            # novel_same_time: 同一時刻, status / title で比較
-            n_same = private_dir / "novel_same"
-            idx_same = """# title
-ガンマ
-# tags
-- t
-# status
-連載中
-# outline
-o
-"""
-            _write(n_same / "index.md", idx_same)
-            _write(n_same / "001.md", """# title
-c
-# number
-1
-# content
-same
-""")
-
-            # 同じタイムスタンプに揃える
-            same_time = time.time() - 500
-            for f in n_new.iterdir():
-                os.utime(f, (same_time + 100, same_time + 100))  # 最も新しい
-            for f in n_same.iterdir():
-                os.utime(f, (same_time, same_time))
-
             tp = TopPage.load_if_valid(self_intro)
             self.assertIsInstance(tp, TopPage)
 
-            ordered_titles = [n.title for n in tp.novels]
+            self.assertEqual(
+                [path.name for path in tp.novel_directories],
+                ["a-novel", "z-novel"],
+            )
 
-            # 最終更新日時が最新の novel_new が先頭
-            self.assertEqual(ordered_titles[0], "ベータ")
-
-            # novel_old は最も古いので末尾
-            self.assertEqual(ordered_titles[-1], "アルファ")
-
-    def test_hash_reflects_novel_change(self):
+    def test_hash_does_not_reflect_novel_change(self):
         with TemporaryDirectory() as d:
             root = Path(d)
             private_dir = root / "private"
@@ -242,7 +203,7 @@ c
             self.assertIsInstance(tp1, TopPage)
             h1 = tp1.hash()
 
-            # 本文だけ変更して Novel.hash が変わる → TopPage.hash も変わるはず
+            # 自己紹介ファイルは変えていないので、その履歴用hashも変わらない。
             body2 = """# title
 A
 # number
@@ -256,7 +217,8 @@ cc
             self.assertIsInstance(tp2, TopPage)
             h2 = tp2.hash()
 
-            self.assertNotEqual(h1, h2)
+            self.assertEqual(h1, h2)
+            self.assertNotEqual(tp1.legacy_hash(), tp2.legacy_hash())
 
 if __name__ == "__main__":
     unittest.main()
