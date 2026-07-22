@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 import html
 from pathlib import Path
-from typing import Dict, Tuple, Optional, List
+from typing import Dict, Iterable, Tuple, Optional, List
 
 from markdown import markdown as md_to_html
 
@@ -58,14 +58,21 @@ def update_history_entry(
     key: Path,
     new_hash: str,
     now_iso: str,
+    *,
+    legacy_hashes: Iterable[str] = (),
 ) -> str:
     key_str = str(key).replace("\\", "/")
     old = history.get(key_str)
-    if old is None or old[0] != new_hash:
-        history[key_str] = (new_hash, now_iso)
-        return now_iso
-    else:
+    if old is not None and old[0] == new_hash:
         return old[1]
+    if old is not None and old[0] in legacy_hashes:
+        # The former hashes for an index and self_intro included downstream
+        # content. Replace only the hash representation; the input file itself
+        # did not change, so retain its historical timestamp.
+        history[key_str] = (new_hash, old[1])
+        return old[1]
+    history[key_str] = (new_hash, now_iso)
+    return now_iso
 
 
 def parse_date_from_iso(ts: str) -> str:
@@ -74,6 +81,22 @@ def parse_date_from_iso(ts: str) -> str:
     except Exception:
         return ""
     return dt.date().isoformat()
+
+
+def _timestamp_value(ts: str) -> datetime:
+    """Parse an ISO timestamp into a comparable UTC datetime."""
+    try:
+        value = datetime.fromisoformat(ts)
+    except (TypeError, ValueError):
+        return datetime.min.replace(tzinfo=timezone.utc)
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
+def _latest_timestamp(timestamps: Iterable[str]) -> str:
+    values = list(timestamps)
+    return max(values, key=_timestamp_value) if values else ""
 
 
 # ====== HTML 共通 ======
@@ -208,6 +231,26 @@ class NovelContext:
     index_to_story: Dict[int, Story]   # 1-origin 表示順 -> Story
 
 
+_STATUS_ORDER = {
+    "連載中": 0,
+    "完結済": 1,
+    "更新停止": 2,
+}
+
+
+def _novel_context_sort_key(nc: NovelContext):
+    # datetime has no reverse-key helper. A timedelta also works for dates that
+    # Windows' platform timestamp conversion cannot represent.
+    epoch = datetime(1970, 1, 1, tzinfo=timezone.utc)
+    updated = (_timestamp_value(nc.last_updated_iso) - epoch).total_seconds()
+    return (
+        -updated,
+        _STATUS_ORDER.get(nc.novel.status, 999),
+        nc.novel.title,
+        nc.public_dir.name,
+    )
+
+
 def _relative_history_key(path: Path, root: Path) -> Path:
     """Return the repository-relative key used by update_history.csv."""
     p = Path(path)
@@ -226,14 +269,26 @@ def build_top_page(
     # TopPage（自己紹介）の更新履歴
     top_rel = _relative_history_key(tp.path, root)
     top_hash = tp.hash()
-    top_ts_iso = update_history_entry(history, top_rel, top_hash, now_iso)
+    top_ts_iso = update_history_entry(
+        history,
+        top_rel,
+        top_hash,
+        now_iso,
+        legacy_hashes=tp.legacy_hash_candidates(),
+    )
 
     novel_contexts: List[NovelContext] = []
     for novel, ndir in zip(tp.novels, tp.novel_directories):
         ndir = Path(ndir)
         n_hash = novel.hash()
         n_key = _relative_history_key(novel.path, root)
-        n_ts_iso = update_history_entry(history, n_key, n_hash, now_iso)
+        n_ts_iso = update_history_entry(
+            history,
+            n_key,
+            n_hash,
+            now_iso,
+            legacy_hashes=(novel.legacy_hash(),),
+        )
 
         story_updated_iso: Dict[int, str] = {}
         index_to_story: Dict[int, Story] = {}
@@ -244,7 +299,7 @@ def build_top_page(
             index_to_story[idx] = s
 
         all_ts = [n_ts_iso] + list(story_updated_iso.values())
-        n_last_iso = max(all_ts) if all_ts else n_ts_iso
+        n_last_iso = _latest_timestamp(all_ts) or n_ts_iso
 
         nc = NovelContext(
             novel=novel,
@@ -256,7 +311,11 @@ def build_top_page(
         )
         novel_contexts.append(nc)
 
-    site_last_date = parse_date_from_iso(top_ts_iso) or datetime.now().date().isoformat()
+    novel_contexts.sort(key=_novel_context_sort_key)
+    site_last_iso = _latest_timestamp(
+        [top_ts_iso, *(nc.last_updated_iso for nc in novel_contexts)]
+    )
+    site_last_date = parse_date_from_iso(site_last_iso) or parse_date_from_iso(now_iso)
 
     header_html = render_site_header("", site_last_date)
 
@@ -328,13 +387,13 @@ def build_top_page(
     return index_html, novel_contexts, site_last_date
 
 
-def build_novel_top_page(site_last_date: str, nc: NovelContext) -> str:
+def build_novel_top_page(nc: NovelContext) -> str:
     n = nc.novel
-    header_html = render_site_header("../", site_last_date)
 
     title_html = md.to_html_ruby(n.title)
     tags_str = parse_tags(n.tags)
-    last_date = parse_date_from_iso(nc.last_updated_iso) or site_last_date
+    last_date = parse_date_from_iso(nc.last_updated_iso)
+    header_html = render_site_header("../", last_date)
     outline_html = md.to_html(n.outline)
 
     # 他公開サイト
@@ -439,16 +498,16 @@ def build_novel_top_page(site_last_date: str, nc: NovelContext) -> str:
     return novel_top_html
 
 
-def build_story_page(site_last_date: str, nc: NovelContext, story_index: int) -> str:
+def build_story_page(nc: NovelContext, story_index: int) -> str:
     n = nc.novel
     s = nc.index_to_story[story_index]
-    header_html = render_site_header("../", site_last_date)
 
     title_text = f"{story_index}話 {s.title}"
     title_html = md.to_html_ruby(title_text)
 
     s_ts_iso = nc.story_updated_iso.get(s.number, nc.last_updated_iso)
-    s_date = parse_date_from_iso(s_ts_iso) or site_last_date
+    s_date = parse_date_from_iso(s_ts_iso)
+    header_html = render_site_header("../", s_date)
     body_html = md.to_html(s.content)
 
     prev_html = ""
@@ -573,6 +632,7 @@ def generate_site(
     *,
     history_seed_path: Optional[Path] = None,
     newline_reference_dir: Optional[Path] = None,
+    now: Optional[datetime] = None,
 ) -> None:
     """Generate the complete site into explicit destinations.
 
@@ -597,10 +657,13 @@ def generate_site(
     # 履歴
     seed = Path(history_seed_path) if history_seed_path else history_path
     history = load_history(seed)
-    now_iso = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    generation_time = now or datetime.now(timezone.utc)
+    if generation_time.tzinfo is None:
+        raise ValueError("now must include timezone information")
+    now_iso = generation_time.astimezone(timezone.utc).isoformat(timespec="seconds")
 
     # トップページ
-    index_html, novel_contexts, site_last_date = build_top_page(
+    index_html, novel_contexts, _site_last_date = build_top_page(
         root, public_dir, tp, history, now_iso
     )
     public_dir.mkdir(parents=True, exist_ok=True)
@@ -619,7 +682,7 @@ def generate_site(
     # 各小説トップ & 各話
     for nc in novel_contexts:
         nc.public_dir.mkdir(parents=True, exist_ok=True)
-        novel_top_html = build_novel_top_page(site_last_date, nc)
+        novel_top_html = build_novel_top_page(nc)
         _write_generated_html(
             nc.public_dir / "index.html",
             novel_top_html,
@@ -629,7 +692,7 @@ def generate_site(
 
         total = len(nc.index_to_story)
         for idx in range(1, total + 1):
-            story_html = build_story_page(site_last_date, nc, idx)
+            story_html = build_story_page(nc, idx)
             out = nc.public_dir / f"{idx}.html"
             _write_generated_html(
                 out,
