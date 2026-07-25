@@ -139,7 +139,7 @@ SSGと同じ `md.to_html()` でMarkdownと独自ルビをHTMLへ変換した後�
 出力先は次の配下です。
 
 ```text
-.novel-editor/repost-export/<slug>/<to>/<YYYYMMDD-HHMMSS>/
+.repost-export/<slug>/<to>/<YYYYMMDD-HHMMSS>/
 ```
 
 同じ秒に同じ条件で再実行した場合は `-001`、`-002` のような連番を付け、
@@ -147,8 +147,9 @@ SSGと同じ `md.to_html()` でMarkdownと独自ルビをHTMLへ変換した後�
 最終ディレクトリへ移動するため、失敗した処理の途中ファイルは最終出力として
 残りません。
 
-`.novel-editor/` はリポジトリの `.gitignore` で除外されているため、出力
-ファイルはGit追跡対象外です。
+`.repost-export/` はこのツール専用のディレクトリです。小説エディタが管理する
+`.novel-editor/` は参照も変更もしません。`.repost-export/` はリポジトリの
+`.gitignore` で除外されているため、出力ファイルはGit追跡対象外です。
 
 正常終了時は、標準出力へ対象slug、転載先、モード、出力先の絶対パス、
 出力ファイル数、警告数を表示します。
@@ -161,7 +162,7 @@ SSGと同じ `md.to_html()` でMarkdownと独自ルビをHTMLへ変換した後�
 - `private/<slug>/index.md` が存在するか
 - `index.md` と各話MarkdownがREADME記載の既存フォーマットを満たすか
 - 通常モードの場合、対象作品に少なくとも1話あるか
-- `.novel-editor/repost-export/` 配下へディレクトリとファイルを作成できるか
+- `.repost-export/` 配下へディレクトリとファイルを作成できるか
 - `--to` が対応する4サイトのいずれかになっているか
 
 既存バリデーションエラーがある場合は出力を作成せず、エラー一覧を表示して
