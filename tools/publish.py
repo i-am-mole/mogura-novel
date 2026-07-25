@@ -387,13 +387,13 @@ def build_top_page(
     return index_html, novel_contexts, site_last_date
 
 
-def build_novel_top_page(nc: NovelContext) -> str:
+def build_novel_top_page(nc: NovelContext, site_last_date: str) -> str:
     n = nc.novel
 
     title_html = md.to_html_ruby(n.title)
     tags_str = parse_tags(n.tags)
     last_date = parse_date_from_iso(nc.last_updated_iso)
-    header_html = render_site_header("../", last_date)
+    header_html = render_site_header("../", site_last_date)
     outline_html = md.to_html(n.outline)
 
     # 他公開サイト
@@ -498,7 +498,11 @@ def build_novel_top_page(nc: NovelContext) -> str:
     return novel_top_html
 
 
-def build_story_page(nc: NovelContext, story_index: int) -> str:
+def build_story_page(
+    nc: NovelContext,
+    story_index: int,
+    site_last_date: str,
+) -> str:
     n = nc.novel
     s = nc.index_to_story[story_index]
 
@@ -507,7 +511,7 @@ def build_story_page(nc: NovelContext, story_index: int) -> str:
 
     s_ts_iso = nc.story_updated_iso.get(s.number, nc.last_updated_iso)
     s_date = parse_date_from_iso(s_ts_iso)
-    header_html = render_site_header("../", s_date)
+    header_html = render_site_header("../", site_last_date)
     body_html = md.to_html(s.content)
 
     prev_html = ""
@@ -663,7 +667,7 @@ def generate_site(
     now_iso = generation_time.astimezone(timezone.utc).isoformat(timespec="seconds")
 
     # トップページ
-    index_html, novel_contexts, _site_last_date = build_top_page(
+    index_html, novel_contexts, site_last_date = build_top_page(
         root, public_dir, tp, history, now_iso
     )
     public_dir.mkdir(parents=True, exist_ok=True)
@@ -682,7 +686,7 @@ def generate_site(
     # 各小説トップ & 各話
     for nc in novel_contexts:
         nc.public_dir.mkdir(parents=True, exist_ok=True)
-        novel_top_html = build_novel_top_page(nc)
+        novel_top_html = build_novel_top_page(nc, site_last_date)
         _write_generated_html(
             nc.public_dir / "index.html",
             novel_top_html,
@@ -692,7 +696,7 @@ def generate_site(
 
         total = len(nc.index_to_story)
         for idx in range(1, total + 1):
-            story_html = build_story_page(nc, idx)
+            story_html = build_story_page(nc, idx, site_last_date)
             out = nc.public_dir / f"{idx}.html"
             _write_generated_html(
                 out,

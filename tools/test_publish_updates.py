@@ -118,7 +118,7 @@ class TestUpdateScope(unittest.TestCase):
                 self.assertEqual(migrated[key][0], novel.hash())
             self.assertEqual(_files(second_docs), _files(first_docs))
 
-    def test_story_change_only_updates_its_declared_dependents(self):
+    def test_story_change_updates_site_header_and_declared_content_dependents(self):
         with TemporaryDirectory() as directory:
             root = Path(directory)
             _make_site(root)
@@ -149,11 +149,7 @@ class TestUpdateScope(unittest.TestCase):
             }
             self.assertEqual(
                 changed_outputs,
-                {
-                    "index.html",
-                    "return-of-son/index.html",
-                    "return-of-son/1.html",
-                },
+                {name for name in before_docs if name.endswith(".html")},
             )
             after_history = load_history(history_path)
             changed_history = {
@@ -176,6 +172,28 @@ class TestUpdateScope(unittest.TestCase):
             expected_date = STORY_UPDATE.date().isoformat().encode()
             self.assertIn(expected_date, after_docs["return-of-son/1.html"])
             self.assertIn(expected_date, after_docs["return-of-son/index.html"])
+            expected_header = (
+                f'<p class="last-update">{STORY_UPDATE.date().isoformat()} 更新</p>'
+            ).encode()
+            for name, content in after_docs.items():
+                if name.endswith(".html"):
+                    self.assertIn(expected_header, content, name)
+
+            # The shared header shows the site date, while work/story metadata
+            # keeps its own lower-level update date.
+            previous_date = FIRST_RUN.date().isoformat().encode()
+            self.assertIn(
+                b'<p class="metadata">'
+                + previous_date
+                + " 更新".encode(),
+                after_docs["kaminomori/index.html"],
+            )
+            self.assertIn(
+                b'<p class="chapter-metadata-chapter">'
+                + previous_date
+                + " 更新".encode(),
+                after_docs["kaminomori/1.html"],
+            )
 
     def test_second_run_without_changes_is_byte_identical(self):
         with TemporaryDirectory() as directory:
