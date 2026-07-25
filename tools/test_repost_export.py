@@ -394,9 +394,10 @@ class TestExportIntegration(unittest.TestCase):
                 now=datetime(2026, 1, 2, 3, 4, 5),
             )
             allowed = (
-                root / ".novel-editor" / "repost-export" / "sample" / "kakuyomu"
+                root / ".repost-export" / "sample" / "kakuyomu"
             ).resolve()
             self.assertTrue(result.output_dir.is_relative_to(allowed))
+            self.assertFalse((root / ".novel-editor").exists())
 
     def test_existing_output_is_not_overwritten(self):
         with TemporaryDirectory() as directory:
@@ -442,9 +443,10 @@ class TestExportIntegration(unittest.TestCase):
                         now=datetime(2026, 1, 2, 3, 4, 5),
                     )
 
-            output_root = root / ".novel-editor" / "repost-export"
+            output_root = root / ".repost-export"
             remaining = list(output_root.rglob("*")) if output_root.exists() else []
             self.assertEqual(remaining, [])
+            self.assertFalse((root / ".novel-editor").exists())
 
     def test_output_is_utf8_with_lf_and_one_final_newline(self):
         with TemporaryDirectory() as directory:
@@ -475,6 +477,7 @@ class TestExportIntegration(unittest.TestCase):
                     taiara=False,
                     now=datetime(2026, 1, 2, 3, 4, 5),
                 )
+            self.assertFalse((root / ".repost-export").exists())
             self.assertFalse((root / ".novel-editor").exists())
 
     def test_missing_slug_and_missing_index_are_clear_errors(self):
@@ -499,7 +502,33 @@ class TestExportIntegration(unittest.TestCase):
                     taiara=True,
                     now=datetime(2026, 1, 2, 3, 4, 5),
                 )
+            self.assertFalse((root / ".repost-export").exists())
             self.assertFalse((root / ".novel-editor").exists())
+
+    def test_export_does_not_touch_novel_editor_directory(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            _make_novel(root)
+            sentinel = root / ".novel-editor" / "sentinel.txt"
+            _write(sentinel, "editor-owned\n")
+
+            result = export_novel(
+                root,
+                slug="sample",
+                site="pixiv",
+                taiara=True,
+                now=datetime(2026, 1, 2, 3, 4, 5),
+            )
+
+            self.assertTrue(result.output_dir.is_relative_to(root / ".repost-export"))
+            self.assertEqual(sentinel.read_text(encoding="utf-8"), "editor-owned\n")
+            self.assertEqual(
+                sorted(
+                    path.relative_to(root / ".novel-editor")
+                    for path in (root / ".novel-editor").rglob("*")
+                ),
+                [Path("sentinel.txt")],
+            )
 
     def test_unexpected_site_is_rejected(self):
         with self.assertRaisesRegex(ExportError, "未対応"):

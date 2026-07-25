@@ -588,7 +588,7 @@ def export_novel(
         novel, site=site, taiara=taiara, warnings=warnings
     )
 
-    configured_output_root = root / ".novel-editor" / "repost-export"
+    configured_output_root = root / ".repost-export"
     output_root = configured_output_root.resolve()
     if not output_root.is_relative_to(root):
         raise ExportError(
