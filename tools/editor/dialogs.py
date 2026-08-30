@@ -50,6 +50,19 @@ class FormDialog(simpledialog.Dialog):
         master.columnconfigure(1, weight=1)
         return first
 
+    def buttonbox(self):
+        super().buttonbox()
+        # simpledialog.Dialog binds Return on the whole dialog to ``ok``.
+        # A Text widget's class binding inserts the newline first, then the
+        # event reaches that dialog binding and unintentionally submits it.
+        self.bind("<Return>", self._return_pressed)
+
+    def _return_pressed(self, event):
+        if isinstance(event.widget, tk.Text):
+            return "break"
+        self.ok(event)
+        return "break"
+
     def apply(self):
         values = {}
         for key, widget in self.widgets.items():
