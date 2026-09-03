@@ -12,6 +12,18 @@ def _write(path: Path, content: str) -> Path:
 
 
 class TestTopPageValidation(unittest.TestCase):
+    def test_unpublished_work_is_not_loaded_or_validated(self):
+        with TemporaryDirectory() as d:
+            private_dir = Path(d) / "private"
+            self_intro = _write(private_dir / "self_intro.md", "自己紹介")
+            _write(private_dir / "-draft-work" / "index.md", "書きかけ")
+
+            result = TopPage.load_if_valid(self_intro)
+
+            self.assertIsInstance(result, TopPage)
+            self.assertEqual(result.novels, ())
+            self.assertEqual(result.novel_directories, ())
+
     def test_missing_self_intro(self):
         with TemporaryDirectory() as d:
             root = Path(d)

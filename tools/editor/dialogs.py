@@ -78,7 +78,7 @@ def ask_new_work(parent, *, content_font=("Arial", 11)):
         parent,
         "新しい作品",
         [
-            ("slug", "work-slug"),
+            ("slug", "work-slug（先頭-で非公開）"),
             ("title", "タイトル"),
             ("tags", "タグ（- タグ名）"),
             ("status", "連載ステータス"),
@@ -96,7 +96,7 @@ def ask_new_story(parent, *, content_font=("Arial", 11)):
         parent,
         "新しい話",
         [
-            ("slug", "episode-slug"),
+            ("slug", "episode-slug（先頭-で非公開）"),
             ("title", "タイトル"),
             ("number", "話数番号"),
             ("content", "本文"),

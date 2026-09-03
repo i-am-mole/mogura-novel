@@ -13,9 +13,11 @@ from editor.preview import PreviewManager
 from editor.repository import (
     Repository,
     RepositoryError,
+    is_unpublished_slug,
     validate_story_fields,
     validate_work_fields,
 )
+from story import Story
 from editor.widgets import PairListEditor
 
 
@@ -114,7 +116,11 @@ class NovelEditorApp:
             except Exception:
                 title = slug
             work_iid = self.tree.insert(
-                novels_root, "end", text=f"{title} [{slug}]", open=True
+                novels_root,
+                "end",
+                text=(f"{title} [{slug}]（非公開）" if is_unpublished_slug(slug)
+                      else f"{title} [{slug}]"),
+                open=True,
             )
             self._insert_tree(work_iid, f"work:{slug}", "作品情報", ("work", slug))
             novel = self.repo.load_novel(slug)
@@ -141,6 +147,24 @@ class NovelEditorApp:
                 for story in novel.stories:
                     self._insert_story_node(work_iid, slug, story)
 
+            unpublished = self.repo.unpublished_stories(slug)
+            if unpublished:
+                unpublished_iid = self.tree.insert(
+                    work_iid, "end", text="非公開話", open=True
+                )
+                for item in unpublished:
+                    if isinstance(item, Story):
+                        self._insert_story_node(
+                            unpublished_iid, slug, item, unpublished=True
+                        )
+                    else:
+                        self._insert_tree(
+                            unpublished_iid,
+                            f"story:{slug}:{item.stem}",
+                            f"{item.stem}（入力途中）",
+                            ("story", slug, item.stem),
+                        )
+
         if select_ref:
             for iid, ref in self.tree_refs.items():
                 if ref == select_ref:
@@ -151,11 +175,13 @@ class NovelEditorApp:
                     break
         self.suppress_tree_event = False
 
-    def _insert_story_node(self, parent: str, work_slug: str, story) -> None:
+    def _insert_story_node(
+        self, parent: str, work_slug: str, story, *, unpublished: bool = False
+    ) -> None:
         self._insert_tree(
             parent,
             f"story:{work_slug}:{story.path.stem}",
-            f"{story.number}: {story.title}",
+            f"{story.number}: {story.title}" + ("（非公開）" if unpublished else ""),
             ("story", work_slug, story.path.stem),
         )
 
@@ -517,7 +543,10 @@ class NovelEditorApp:
             return
         work, old = self.current_ref[1], self.current_ref[2]
         new = simpledialog.askstring(
-            "episode-slugの変更", "新しいepisode-slug", initialvalue=old, parent=self.window
+            "episode-slugの変更",
+            "新しいepisode-slug（先頭-で非公開）",
+            initialvalue=old,
+            parent=self.window,
         )
         if not new or new.strip() == old:
             return
@@ -614,6 +643,12 @@ class NovelEditorApp:
         if ref[0] == "self":
             return "index.html"
         if ref[0] == "work":
+            if is_unpublished_slug(ref[1]):
+                return "index.html"
+            return f"{ref[1]}/index.html"
+        if is_unpublished_slug(ref[1]):
+            return "index.html"
+        if is_unpublished_slug(ref[2]):
             return f"{ref[1]}/index.html"
         novel = self.repo.load_novel(ref[1])
         if not isinstance(novel, list):
