@@ -3,11 +3,27 @@
 ## 目的と適用範囲
 
 この文書は `python tools/publish.py` で実行する静的サイトジェネレータ（SSG）の実装仕様を定める。
-コンテンツの書式と編集方法は [README.md](README.md)、ブランチ運用は [DEVELOPMENT.md](DEVELOPMENT.md) を参照すること。
+コンテンツの書式と編集方法は [CONTENT_GUIDE.md](CONTENT_GUIDE.md)、ブランチ運用と公開手順は [DEVELOPMENT.md](DEVELOPMENT.md) を参照すること。
 
 SSG は `private/` を入力、`docs/` と `data/update_history.csv` を追跡対象の出力とする。
 全ページを毎回生成してよいが、同じ入力と更新履歴からは同じ追跡対象バイト列を生成しなければならない。
 ファイルを生成したことと、コンテンツを更新したことは区別する。
+
+## 生成物
+
+SSG はサイト全体を生成し、次の追跡対象へ出力する。
+
+| 出力 | 内容 |
+| --- | --- |
+| `docs/index.html` | 自己紹介と作品一覧を表示するサイトトップ |
+| `docs/<work-slug>/index.html` | 作品情報と目次を表示する作品トップ |
+| `docs/<work-slug>/<話順>.html` | `number` 順を1から数えた各話ページ |
+| `docs/css/style.css` | `private/css/style.css` から生成するスタイル |
+| `docs/CNAME`、favicon | `private/` に存在する対応ファイルのコピー |
+| `docs/ogp/` | `private/ogp/` が存在する場合のコピー |
+| `data/update_history.csv` | 入力ごとの意味内容ハッシュと更新日時 |
+
+`docs/` と `data/update_history.csv` は SSG の管理対象であり、通常は直接編集しない。
 
 ## 用語
 
