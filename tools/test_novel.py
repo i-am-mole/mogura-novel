@@ -13,6 +13,27 @@ def _write(path: Path, content: str) -> Path:
 
 
 class TestNovelValid(unittest.TestCase):
+    def test_unpublished_and_memo_markdown_are_not_loaded(self):
+        with TemporaryDirectory() as d:
+            novel_dir = Path(d) / "private" / "novel"
+            index = _write(novel_dir / "index.md", """# title
+t
+# tags
+- t
+# status
+連載中
+# outline
+o
+""")
+            invalid_draft = "書きかけなので話の書式を満たしていない"
+            _write(novel_dir / "-draft.md", invalid_draft)
+            _write(novel_dir / "_memo.md", invalid_draft)
+
+            novel = Novel.load_if_valid(index)
+
+            self.assertIsInstance(novel, Novel)
+            self.assertEqual(novel.stories, ())
+
     def test_valid_novel_without_chapters(self):
         with TemporaryDirectory() as d:
             root = Path(d)

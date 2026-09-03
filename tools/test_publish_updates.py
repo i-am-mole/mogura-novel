@@ -72,6 +72,33 @@ def _files(directory: Path) -> dict[str, bytes]:
 
 
 class TestUpdateScope(unittest.TestCase):
+    def test_unpublished_work_and_story_create_no_public_output_or_history(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            _make_site(root)
+            _write(
+                root / "private" / "return-of-son" / "-draft.md",
+                "書きかけなので話の書式を満たしていない",
+            )
+            _write(root / "private" / "-draft-work" / "index.md", "書きかけ")
+            docs = root / "docs"
+            history_path = root / "history.csv"
+
+            generate_site(root, docs, history_path, now=FIRST_RUN)
+
+            files = _files(docs)
+            history = load_history(history_path)
+            self.assertNotIn("-draft-work/index.html", files)
+            self.assertFalse(any("-draft" in key for key in history))
+            self.assertEqual(
+                sorted(name for name in files if name.startswith("return-of-son/")),
+                [
+                    "return-of-son/1.html",
+                    "return-of-son/2.html",
+                    "return-of-son/index.html",
+                ],
+            )
+
     def test_legacy_aggregate_hashes_migrate_without_losing_timestamps(self):
         with TemporaryDirectory() as directory:
             root = Path(directory)

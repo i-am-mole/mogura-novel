@@ -8,6 +8,7 @@ import re
 import uuid
 
 from novel import Novel
+from story import Story
 
 from editor.document import RoundTripDocument
 
@@ -36,17 +37,23 @@ class DeletedStory:
 
 def validate_slug(slug: str, *, kind: str) -> str:
     value = slug.strip()
-    if not SLUG_PATTERN.fullmatch(value):
+    published_value = value[1:] if value.startswith("-") else value
+    if not SLUG_PATTERN.fullmatch(published_value):
         raise RepositoryError(
-            "slugは小文字の半角英数字をハイフン1個で区切って入力してください。"
+            "slugは任意の先頭の非公開記号「-」に続けて、小文字の半角英数字を"
+            "ハイフン1個で区切って入力してください。"
         )
-    if value.lower() in WINDOWS_RESERVED:
+    if published_value.lower() in WINDOWS_RESERVED:
         raise RepositoryError("Windowsの予約名は使用できません。")
-    if kind == "work" and value in WORK_RESERVED:
+    if kind == "work" and published_value in WORK_RESERVED:
         raise RepositoryError("blog、wiki、cssは作品slugに使用できません。")
-    if kind == "episode" and value in EPISODE_RESERVED:
+    if kind == "episode" and published_value in EPISODE_RESERVED:
         raise RepositoryError("indexは話slugに使用できません。")
     return value
+
+
+def is_unpublished_slug(slug: str) -> bool:
+    return slug.startswith("-")
 
 
 def validate_work_fields(values: dict[str, str]) -> None:
@@ -127,6 +134,20 @@ class Repository:
 
     def load_story(self, work_slug: str, episode_slug: str) -> RoundTripDocument:
         return RoundTripDocument.load(self.private / work_slug / f"{episode_slug}.md")
+
+    def unpublished_stories(self, work_slug: str) -> list[Story | Path]:
+        """Return unpublished stories for the editor, including invalid drafts."""
+        result: list[Story | Path] = []
+        for path in sorted((self.private / work_slug).glob("-*.md")):
+            story = Story.load_if_valid(path)
+            result.append(path if isinstance(story, list) else story)
+        return sorted(
+            result,
+            key=lambda item: (
+                item.number if isinstance(item, Story) else float("inf"),
+                item.path.name if isinstance(item, Story) else item.name,
+            ),
+        )
 
     def new_work_document(
         self,
@@ -212,6 +233,13 @@ class Repository:
             raise RepositoryError("同名の話slugが既に存在します。")
         if not old_path.is_file():
             raise RepositoryError("改名元の話ファイルが見つかりません。")
+        if is_unpublished_slug(old_slug) and not is_unpublished_slug(new_slug):
+            story = Story.load_if_valid(old_path)
+            if isinstance(story, list):
+                raise RepositoryError(
+                    "公開する前に話の入力エラーを修正してください。\n" + "\n".join(story)
+                )
+            self._validate_unique_number(work_slug, story.number, exclude=old_slug)
 
         old_key = old_path.relative_to(self.root).as_posix()
         new_key = new_path.relative_to(self.root).as_posix()

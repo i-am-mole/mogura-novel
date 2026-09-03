@@ -207,6 +207,7 @@ class Novel:
             and f.suffix == ".md"
             and f.name != "index.md"
             and not f.name.startswith("_")
+            and not f.name.startswith("-")
         )
 
         stories: List[Story] = []

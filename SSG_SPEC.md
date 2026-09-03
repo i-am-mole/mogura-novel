@@ -5,7 +5,7 @@
 この文書は `python tools/publish.py` で実行する静的サイトジェネレータ（SSG）の実装仕様を定める。
 コンテンツの書式と編集方法は [CONTENT_GUIDE.md](CONTENT_GUIDE.md)、ブランチ運用と公開手順は [DEVELOPMENT.md](DEVELOPMENT.md) を参照すること。
 
-SSG は `private/` を入力、`docs/` と `data/update_history.csv` を追跡対象の出力とする。
+SSG は `private/` を入力、`docs/` と `data/update_history.csv` を追跡対象の出力とする。名前が `-` で始まる作品ディレクトリと話Markdownは非公開入力として扱い、検証、集計、HTML生成、更新履歴更新の対象にしない。
 全ページを毎回生成してよいが、同じ入力と更新履歴からは同じ追跡対象バイト列を生成しなければならない。
 ファイルを生成したことと、コンテンツを更新したことは区別する。
 

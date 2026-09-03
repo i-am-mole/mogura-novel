@@ -55,6 +55,8 @@ class TopPage:
         for child in sorted(private_dir.iterdir()):
             if not child.is_dir():
                 continue
+            if child.name.startswith("-"):
+                continue
             index_md = child / "index.md"
             if not index_md.is_file():
                 continue
