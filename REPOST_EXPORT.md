@@ -11,10 +11,9 @@
 
 ## 前提環境
 
-- Windows PowerShell
+- `venv.bat` が開いた、仮想環境を有効化済みの Windows コマンドプロンプト
 - リポジトリのルートディレクトリ
-- `requirements.txt` に従って作成した既存の `.venv`
-- `private/<slug>/index.md` と各話 Markdown が既存SSGの検証を通ること
+- `private/<slug>/index.md` と各話 Markdown が SSG の検証を通ること
 
 生成済みの `docs/` HTMLは読みません。既存の `Novel.load_if_valid()` で
 `private/` の原稿を読み、各話の抽出、検証、`number` 順の並べ替えを行います。
@@ -23,14 +22,14 @@
 
 作品の全話を1話1ファイルで出力する例です。
 
-```powershell
-.venv\Scripts\python.exe tools\repost_export.py --slug kaminomori --to kakuyomu
+```bat
+python tools/repost_export.py --slug kaminomori --to kakuyomu
 ```
 
 作品タイトルとあらすじだけを出力する例です。
 
-```powershell
-.venv\Scripts\python.exe tools\repost_export.py --slug kaminomori --to narou --taiara
+```bat
+python tools/repost_export.py --slug kaminomori --to narou --taiara
 ```
 
 ### 引数
@@ -160,7 +159,7 @@ SSGと同じ `md.to_html()` でMarkdownと独自ルビをHTMLへ変換した後�
 
 - `--slug` が `private/` 直下の単一ディレクトリ名になっているか
 - `private/<slug>/index.md` が存在するか
-- `index.md` と各話MarkdownがREADME記載の既存フォーマットを満たすか
+- `index.md` と各話 Markdown が [CONTENT_GUIDE.md](CONTENT_GUIDE.md) のフォーマットを満たすか
 - 通常モードの場合、対象作品に少なくとも1話あるか
 - `.repost-export/` 配下へディレクトリとファイルを作成できるか
 - `--to` が対応する4サイトのいずれかになっているか

@@ -2,9 +2,9 @@
 
 ## 目的
 
-GitHub Pagesで公開する `private/` 配下のMarkdownを、既存形式と不要な差分を維持しながら編集するWindows向けGUIエディタです。
+GitHub Pages で公開する `private/` 配下の Markdown を、既存形式を維持し、不要な差分を生じさせずに編集する Windows 向け GUI エディタです。
 
-自己紹介、作品情報、各話を日本語フォームから編集できます。保存時には追跡対象外の一時領域でSSGを実行し、通常のWebブラウザで公開イメージを確認できます。
+自己紹介、作品情報、各話を日本語フォームから編集できます。保存時には追跡対象外の一時領域で SSG を実行し、通常の Web ブラウザで公開イメージを確認できます。各入力ファイルの書式は [CONTENT_GUIDE.md](CONTENT_GUIDE.md) を参照してください。
 
 ## 必要な事前準備
 
@@ -93,12 +93,14 @@ slugは小文字の半角英数字を単一のハイフンで区切った名前�
 通常の公開物を生成する場合は、従来どおり次を実行します。
 
 ```bat
-.venv\Scripts\python.exe tools\publish.py
+python tools/publish.py
 ```
+
+このコマンドは、`venv.bat` が開いた仮想環境を有効化済みのコマンドプロンプトで、リポジトリルートから実行します。
 
 公開時の更新日、入力ごとの更新判定、生成物の依存関係は [SSG_SPEC.md](SSG_SPEC.md) に従います。
 
-公開SSGはサイト全体を `.novel-editor/` 内へ生成し、全処理が成功した場合だけ `docs/` と更新履歴を入れ替えます。生成失敗時は既存の公開物を維持します。
+公開 SSG の原子的な置換と失敗時の扱いは [SSG_SPEC.md](SSG_SPEC.md#全ページ生成と冪等性) を参照してください。
 
 ## 一時領域
 
@@ -123,7 +125,7 @@ slugは小文字の半角英数字を単一のハイフンで区切った名前�
 一時ファイルを必ずリポジトリ内へ置く専用ランナーを使用します。
 
 ```bat
-.venv\Scripts\python.exe tools\run_tests.py
+python tools/run_tests.py
 ```
 
 ## 制限事項
