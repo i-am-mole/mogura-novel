@@ -19,6 +19,8 @@ SSG はサイト全体を生成し、次の追跡対象へ出力する。
 | `docs/<work-slug>/index.html` | 作品情報と目次を表示する作品トップ |
 | `docs/<work-slug>/<話順>.html` | `number` 順を1から数えた各話ページ |
 | `docs/css/style.css` | `private/css/style.css` から生成するスタイル |
+| `docs/js/apply-update-metadata.js` | `private/js/apply-update-metadata.js` のコピー。更新情報を画面へ反映する |
+| `docs/update-metadata.json` | サイトと作品の表示用更新情報。ブラウザがJavaScriptで読み込む |
 | `docs/CNAME`、favicon | `private/` に存在する対応ファイルのコピー |
 | `docs/ogp/` | `private/ogp/` が存在する場合のコピー |
 | `data/update_history.csv` | 入力ごとの意味内容ハッシュと更新日時 |
@@ -40,6 +42,9 @@ SSG はサイト全体を生成し、次の追跡対象へ出力する。
 ## 更新日時の表示
 
 全ページの共通ヘッダーに表示する「更新」は、サイト更新日を意味する。
+ただし、サイト更新日は各HTMLへ直接埋め込まず、`docs/update-metadata.json` に一度だけ出力する。
+各HTMLは日付非依存の表示場所と `docs/js/apply-update-metadata.js` の参照だけを持ち、
+ブラウザがJSONを読み込んで表示場所へサイト更新日を設定する。
 
 | ページ | 共通ヘッダーの表示更新日 |
 | --- | --- |
@@ -49,14 +54,18 @@ SSG はサイト全体を生成し、次の追跡対象へ出力する。
 
 ほかの表示箇所は次のとおりとする。
 
-- サイトトップの各作品カードは、その作品の作品更新日を表示する。
+- サイトトップの各作品カードは、JSONから取得した作品更新日、話数、合計文字数を表示する。
 - 作品トップの作品情報は、その作品の作品更新日を表示する。
 - 作品トップの目次は、各話の話更新日を表示する。
 - 話ページの話情報は、その話の話更新日を表示する。
 
 生成時刻を全ページの共通ヘッダーへ一律に表示してはならず、更新履歴から
-集約したサイト更新日を表示する。共通ヘッダー以外では、ある作品の更新を
+集約したサイト更新日をJSON経由で表示する。共通ヘッダー以外では、ある作品の更新を
 別作品の作品更新日または話更新日として表示してはならない。
+
+JavaScriptが無効な場合、HTMLには具体的な更新日を埋め込まないため、更新日は表示されない。
+JSONの取得に失敗した場合は「更新情報を取得できませんでした」と表示する。
+これは、更新日をHTMLから分離して不要なGit差分を避けることとのトレードオフとして扱う。
 
 `data/update_history.csv` のタイムスタンプはタイムゾーン付きISO 8601形式で保存する。
 SSGが新しく記録するタイムスタンプはUTCとし、秒までを保存する。
@@ -69,20 +78,19 @@ SSGが新しく記録するタイムスタンプはUTCとし、秒までを保�
 `private/self_intro.md` の意味内容が変化した場合は、次が変化する。
 
 - `data/update_history.csv` の `private/self_intro.md` レコード
-- `docs/index.html` の自己紹介とサイト更新表示
-- サイトの表示更新日が変わる場合は、全HTMLの共通ヘッダー
+- `docs/index.html` の自己紹介
+- サイトの表示更新日が変わる場合は `docs/update-metadata.json`
 
 作品の入力履歴、作品トップ、話ページは変化しない。
-ただし、全HTMLの共通ヘッダーは上記のとおり変化し得る。
 
 ### 作品情報
 
 `private/<work-slug>/index.md` の意味内容が変化した場合は、次が変化し得る。
 
 - 当該 `index.md` の更新履歴レコード
-- `docs/index.html` の当該作品カードとサイト更新表示
+- `docs/index.html` の当該作品カードに直接埋め込むタイトル、あらすじ、状態、タグ
 - `docs/<work-slug>/index.html`
-- サイトの表示更新日が変わる場合は、全HTMLの共通ヘッダー
+- 作品更新日、話数、合計文字数、一覧の表示順、サイト更新日のいずれかが変わる場合は `docs/update-metadata.json`
 
 作品タイトルは話ページのHTMLタイトルとOGPタイトルにも使われるため、作品タイトルを変えた場合は当該作品の話ページも変化する。
 話Markdownを変更していない限り、各話の話更新日時は変えない。
@@ -94,16 +102,15 @@ SSGが新しく記録するタイムスタンプはUTCとし、秒までを保�
 - 当該話の更新履歴レコード
 - 当該話に対応する `docs/<work-slug>/<話順>.html`
 - 話更新日、タイトル、文字数等を掲載する `docs/<work-slug>/index.html`
-- 作品更新日、合計文字数等を掲載する `docs/index.html`
-- サイトの表示更新日が変わる場合は、全HTMLの共通ヘッダー
+- 作品更新日、合計文字数、一覧の表示順、サイト更新日のいずれかが変わる場合は `docs/update-metadata.json`
 
 同じ作品の別の話の入力履歴と話更新日時、別作品の入力履歴とHTMLは変化しない。
-ただし、別作品を含む全HTMLの共通ヘッダーは上記のとおり変化し得る。
+サイトトップの見た目はJSONの適用後に変化し得るが、話だけの変更では `docs/index.html` 自体は変化しない。
 ただし、話数番号の変更、話の追加・削除によって表示順、出力ファイル名、前後ナビゲーションが変わる場合は、その構造に依存する同作品内の話ページも変化し得る。
 
 ### 静的ファイルと生成ロジック
 
-- `private/css/style.css`、CNAME、favicon、任意のOGP画像は対応する `docs/` 配下へコピーする。
+- `private/css/style.css`、`private/js/apply-update-metadata.js`、CNAME、favicon、任意のOGP画像は対応する `docs/` 配下へコピーする。
 - テンプレート、Markdown変換、ルビ変換、共通レイアウト等の生成ロジックを変えた場合は、そのロジックに依存する複数または全HTMLが変化し得る。
 - 静的ファイルと生成ロジックの変更を、小説Markdown自身の更新日時として記録しない。
 
@@ -156,6 +163,10 @@ SSGが新しく記録するタイムスタンプはUTCとし、秒までを保�
 4. `work-slug` の昇順
 
 更新日時はISO 8601文字列の辞書順ではなく、タイムゾーンを考慮した時刻として比較する。
+SSGはこの順序を `docs/update-metadata.json` の `display_order` として出力し、
+JavaScriptがブラウザ上で作品カードを並べ替える。`docs/index.html` 内のカードは、
+JavaScriptを利用できない場合のため、更新日時に依存しない連載ステータス、作品タイトル、
+`work-slug` の順で出力する。
 
 ## 全ページ生成と冪等性
 
@@ -181,20 +192,23 @@ Git差分が必要なファイルは次のとおりである。
 - `data/update_history.csv`（`private/return-of-son/abandonment.md` のレコードだけ）
 - `docs/return-of-son/1.html`（本文と話更新日）
 - `docs/return-of-son/index.html`（目次の話更新日と作品更新日）
-- `docs/index.html`（作品カードの作品更新日とサイト更新日）
-- 上記を含む全HTML（共通ヘッダーのサイト更新日）
+- `docs/update-metadata.json`（作品カードと共通ヘッダーの表示用データ）
 
 次のファイルまたはレコードは変化してはならない。
 
 - `data/update_history.csv` の `private/return-of-son/index.md` レコード
 - `data/update_history.csv` の `private/self_intro.md` レコード
-- `docs/return-of-son/2.html` 以降の話ページの共通ヘッダー以外
-- `docs/kaminomori/` 配下のHTMLの共通ヘッダー以外
-- `docs/propeht-philina/` 配下のHTMLの共通ヘッダー以外
+- `docs/index.html`
+- `docs/return-of-son/2.html` 以降の話ページ
+- `docs/kaminomori/` 配下のHTML
+- `docs/propeht-philina/` 配下のHTML
 
-同じUTC日付内の変更ではサイトの表示更新日が変わらないため、無関係な作品の
-HTMLは以前と同じバイト列になる。文字数など掲載メタデータも変化しない場合は、
-対象作品トップまたはサイトトップにもGit差分がないことがあり、これは正常である。
+同じUTC日付内の変更で、文字数と作品一覧の表示順も変わらない場合は、
+`docs/update-metadata.json` にもGit差分がないことがあり、これは正常である。
+
+この方式へ移行する最初の生成では、日付の直接埋め込みを表示場所へ置き換え、
+JavaScript参照を追加するため全HTMLに一度だけ差分が生じる。移行後の一話更新では、
+上記の限定された差分になる。
 
 ## 必須回帰テスト
 
@@ -202,8 +216,8 @@ HTMLは以前と同じバイト列になる。文字数など掲載メタデー�
 
 - 変更なしの連続生成がバイト単位で同一であること
 - 固定した生成時刻で、一話変更時の生成物と履歴の差分範囲が上記具体例どおりであること
-- サイトの表示更新日が変わる場合、全HTMLの共通ヘッダーへ反映されること
-- 無関係な作品では、共通ヘッダー以外のHTMLが同一であること
+- サイトの表示更新日が変わる場合、`docs/update-metadata.json` へ反映されること
+- 一話変更時に `docs/index.html` と無関係な作品のHTMLがバイト単位で同一であること
 - `self_intro.md` と作品 `index.md` の入力ハッシュ・更新日時が一話変更では変化しないこと
 - 作品トップに対象話の更新日が反映されること
 - `CRLF` と `LF`、Windows形式とPOSIX形式のパスが不要な差分を作らないこと

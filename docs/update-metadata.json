@@ -1,0 +1,29 @@
+{
+  "site_last_updated": "2026-09-04",
+  "works": {
+    "kaminomori": {
+      "character_count": 7705,
+      "display_order": 3,
+      "last_updated": "2025-11-14",
+      "story_count": 1
+    },
+    "long-long-path": {
+      "character_count": 17842,
+      "display_order": 0,
+      "last_updated": "2026-09-04",
+      "story_count": 7
+    },
+    "propeht-philina": {
+      "character_count": 8876,
+      "display_order": 2,
+      "last_updated": "2026-05-09",
+      "story_count": 3
+    },
+    "return-of-son": {
+      "character_count": 19325,
+      "display_order": 1,
+      "last_updated": "2026-07-22",
+      "story_count": 7
+    }
+  }
+}
