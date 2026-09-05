@@ -3,6 +3,7 @@
 # tags
 - 一次創作
 - ファンタジー
+- R-15
 # status
 連載中
 # outline
