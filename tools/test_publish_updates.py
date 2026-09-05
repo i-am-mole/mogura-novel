@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
@@ -43,6 +44,10 @@ def _story(title: str, number: int, content: str) -> str:
 def _make_site(root: Path) -> None:
     _write(root / "private" / "self_intro.md", "自己紹介\n")
     _write(root / "private" / "css" / "style.css", "body {}\n")
+    _write(
+        root / "private" / "js" / "apply-update-metadata.js",
+        "// test fixture\n",
+    )
     _write(root / "private" / "CNAME", "example.test\n")
 
     for slug, title in (
@@ -145,7 +150,7 @@ class TestUpdateScope(unittest.TestCase):
                 self.assertEqual(migrated[key][0], novel.hash())
             self.assertEqual(_files(second_docs), _files(first_docs))
 
-    def test_story_change_updates_site_header_and_declared_content_dependents(self):
+    def test_story_change_keeps_unrelated_html_and_top_page_byte_identical(self):
         with TemporaryDirectory() as directory:
             root = Path(directory)
             _make_site(root)
@@ -176,7 +181,11 @@ class TestUpdateScope(unittest.TestCase):
             }
             self.assertEqual(
                 changed_outputs,
-                {name for name in before_docs if name.endswith(".html")},
+                {
+                    "return-of-son/1.html",
+                    "return-of-son/index.html",
+                    "update-metadata.json",
+                },
             )
             after_history = load_history(history_path)
             changed_history = {
@@ -199,12 +208,25 @@ class TestUpdateScope(unittest.TestCase):
             expected_date = STORY_UPDATE.date().isoformat().encode()
             self.assertIn(expected_date, after_docs["return-of-son/1.html"])
             self.assertIn(expected_date, after_docs["return-of-son/index.html"])
+            self.assertEqual(after_docs["index.html"], before_docs["index.html"])
             expected_header = (
-                f'<p class="last-update">{STORY_UPDATE.date().isoformat()} 更新</p>'
-            ).encode()
+                b'<p class="last-update" data-site-last-updated>'
+                + "更新日を読み込み中".encode()
+                + b"</p>"
+            )
             for name, content in after_docs.items():
                 if name.endswith(".html"):
                     self.assertIn(expected_header, content, name)
+
+            metadata = json.loads(after_docs["update-metadata.json"])
+            self.assertEqual(
+                metadata["site_last_updated"],
+                STORY_UPDATE.date().isoformat(),
+            )
+            self.assertEqual(
+                metadata["works"]["return-of-son"]["last_updated"],
+                STORY_UPDATE.date().isoformat(),
+            )
 
             # The shared header shows the site date, while work/story metadata
             # keeps its own lower-level update date.

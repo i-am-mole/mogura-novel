@@ -35,6 +35,10 @@ mogura-novel/
    └─ test_*.py              # 自動テスト
 ```
 
+`private/js/apply-update-metadata.js` は、SSGが生成する `docs/update-metadata.json` を
+ブラウザで読み、共通ヘッダーとサイトトップの更新情報へ反映します。公開サイトは
+引き続き静的ファイルだけで構成され、サーバー側プログラムは使用しません。
+
 実行時には次の Git 追跡対象外ディレクトリが作られます。
 
 | 場所 | 管理主体 | 内容 |

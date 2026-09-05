@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import csv
+import json
 import os
 import shutil
 import sys
@@ -104,11 +105,11 @@ def html_escape(s: str) -> str:
     return html.escape(s, quote=True)
 
 
-def render_site_header(root_prefix: str, last_updated_date: str) -> str:
+def render_site_header(root_prefix: str) -> str:
     return f"""<header class="site-header">
     <div class="site-header-content">
         <h1 class="site-name"><a href="{root_prefix}index.html">もぐらノベル</a></h1>
-        <p class="last-update">{html_escape(last_updated_date)} 更新</p>
+        <p class="last-update" data-site-last-updated>更新日を読み込み中</p>
     </div>
 </header>"""
 
@@ -217,6 +218,7 @@ def build_head(
     <meta name="twitter:site" content="{html_escape(TWITTER_HANDLE)}">
 
     <link rel="stylesheet" href="{root_prefix}css/style.css">
+    <script src="{root_prefix}js/apply-update-metadata.js" defer></script>
 </head>"""
 
 
@@ -249,6 +251,39 @@ def _novel_context_sort_key(nc: NovelContext):
         nc.novel.title,
         nc.public_dir.name,
     )
+
+
+def _novel_context_stable_key(nc: NovelContext):
+    """Return a date-independent order for the HTML source fallback."""
+    return (
+        _STATUS_ORDER.get(nc.novel.status, 999),
+        nc.novel.title,
+        nc.public_dir.name,
+    )
+
+
+def build_update_metadata(
+    novel_contexts: List[NovelContext], site_last_date: str
+) -> str:
+    """Build the small JSON document consumed by every page."""
+    works = {}
+    for display_order, nc in enumerate(novel_contexts):
+        works[nc.public_dir.name] = {
+            "character_count": nc.novel.total_length,
+            "display_order": display_order,
+            "last_updated": parse_date_from_iso(nc.last_updated_iso),
+            "story_count": nc.novel.num_stories,
+        }
+    payload = {
+        "site_last_updated": site_last_date,
+        "works": works,
+    }
+    return json.dumps(
+        payload,
+        ensure_ascii=False,
+        indent=2,
+        sort_keys=True,
+    ) + "\n"
 
 
 def _relative_history_key(path: Path, root: Path) -> Path:
@@ -317,7 +352,7 @@ def build_top_page(
     )
     site_last_date = parse_date_from_iso(site_last_iso) or parse_date_from_iso(now_iso)
 
-    header_html = render_site_header("", site_last_date)
+    header_html = render_site_header("")
 
     # ---- head（favicon / OGP / X）----
     og_desc = "『もぐらノベル』は吾輩はもぐらであるが趣味で書いた小説を公開する個人サイトです。"
@@ -337,22 +372,23 @@ def build_top_page(
 
     # 小説一覧
     novel_items: List[str] = []
-    for nc in novel_contexts:
+    # The HTML itself uses a date-independent order.  JavaScript applies the
+    # update-time order from update-metadata.json after the page has loaded.
+    for nc in sorted(novel_contexts, key=_novel_context_stable_key):
         n = nc.novel
         n_pub_dir_name = nc.public_dir.name
         title_html = md.to_html_ruby(n.title)
         tags_str = parse_tags(n.tags)
         outline_summary = truncate_outline(n.outline)
-        last_date = parse_date_from_iso(nc.last_updated_iso) or site_last_date
         status_html = render_status_badge(n.status)
         # warning: `outline_summary` はエスケープ無しで埋め込まれる
-        item_html = f"""<article class="novel-item">
+        item_html = f"""<article class="novel-item" data-work-slug="{html_escape(n_pub_dir_name)}">
     <h3 class="novel-title"><a href="{html_escape(n_pub_dir_name)}/index.html">{title_html}</a></h3>
     <div class="novel-details">
         <p class="abstract">{outline_summary}</p>
         <p class="status">{status_html}</p>
         <p class="tags">{html_escape(tags_str)}</p>
-        <p class="metadata">{last_date} 更新 | 全{n.num_stories}話 | 合計{n.total_length}文字</p>
+        <p class="metadata" data-work-metadata>更新情報を読み込み中</p>
     </div>
 </article>"""
         novel_items.append(item_html)
@@ -387,13 +423,13 @@ def build_top_page(
     return index_html, novel_contexts, site_last_date
 
 
-def build_novel_top_page(nc: NovelContext, site_last_date: str) -> str:
+def build_novel_top_page(nc: NovelContext) -> str:
     n = nc.novel
 
     title_html = md.to_html_ruby(n.title)
     tags_str = parse_tags(n.tags)
     last_date = parse_date_from_iso(nc.last_updated_iso)
-    header_html = render_site_header("../", site_last_date)
+    header_html = render_site_header("../")
     outline_html = md.to_html(n.outline)
 
     # 他公開サイト
@@ -501,7 +537,6 @@ def build_novel_top_page(nc: NovelContext, site_last_date: str) -> str:
 def build_story_page(
     nc: NovelContext,
     story_index: int,
-    site_last_date: str,
 ) -> str:
     n = nc.novel
     s = nc.index_to_story[story_index]
@@ -511,7 +546,7 @@ def build_story_page(
 
     s_ts_iso = nc.story_updated_iso.get(s.number, nc.last_updated_iso)
     s_date = parse_date_from_iso(s_ts_iso)
-    header_html = render_site_header("../", site_last_date)
+    header_html = render_site_header("../")
     body_html = md.to_html(s.content)
 
     prev_html = ""
@@ -585,6 +620,13 @@ def copy_static_files(
         public_dir=public_dir,
         newline_reference_dir=newline_reference_dir,
     )
+
+    script_src = root / "private" / "js" / "apply-update-metadata.js"
+    if not script_src.is_file():
+        raise FileNotFoundError(f"Update metadata script not found: {script_src}")
+    script_dst_dir = public_dir / "js"
+    script_dst_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(script_src, script_dst_dir / script_src.name)
 
     fnames = [
         "CNAME",
@@ -677,8 +719,13 @@ def generate_site(
         public_dir=public_dir,
         newline_reference_dir=newline_reference_dir,
     )
+    (public_dir / "update-metadata.json").write_text(
+        build_update_metadata(novel_contexts, site_last_date),
+        encoding="utf-8",
+        newline="\n",
+    )
 
-    # CSS / CNAME / icons / optional OGP assets
+    # CSS / JavaScript / CNAME / icons / optional OGP assets
     copy_static_files(
         root, public_dir, newline_reference_dir=newline_reference_dir
     )
@@ -686,7 +733,7 @@ def generate_site(
     # 各小説トップ & 各話
     for nc in novel_contexts:
         nc.public_dir.mkdir(parents=True, exist_ok=True)
-        novel_top_html = build_novel_top_page(nc, site_last_date)
+        novel_top_html = build_novel_top_page(nc)
         _write_generated_html(
             nc.public_dir / "index.html",
             novel_top_html,
@@ -696,7 +743,7 @@ def generate_site(
 
         total = len(nc.index_to_story)
         for idx in range(1, total + 1):
-            story_html = build_story_page(nc, idx, site_last_date)
+            story_html = build_story_page(nc, idx)
             out = nc.public_dir / f"{idx}.html"
             _write_generated_html(
                 out,

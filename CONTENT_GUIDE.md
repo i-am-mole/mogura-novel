@@ -12,6 +12,8 @@ private/
 ├─ CNAME                         # GitHub Pages のカスタムドメイン
 ├─ css/
 │  └─ style.css                  # サイト全体のスタイル
+├─ js/
+│  └─ apply-update-metadata.js   # JSONの更新情報を画面へ反映するスクリプト
 ├─ ogp/                          # 任意。OGP画像
 │  ├─ default.png                # 任意。サイト共通画像
 │  └─ <work-slug>.png            # 任意。作品別画像
@@ -123,6 +125,7 @@ Markdown の通常改行は HTML の改行として維持されます。段落�
 ## CSS、ドメイン、画像
 
 - `private/css/style.css` は必須で、`docs/css/style.css` へ出力されます。
+- `private/js/apply-update-metadata.js` は必須で、`docs/js/apply-update-metadata.js` へ出力されます。通常の原稿更新では編集しません。
 - `private/CNAME` は存在する場合に `docs/CNAME` へコピーされます。
 - favicon は `private/` 直下の `favicon.ico`、`favicon-16x16.png`、`favicon-32x32.png`、`apple-touch-icon.png` を使用します。
 - OGP 画像は任意です。`private/ogp/<work-slug>.png`、`private/ogp/default.png`、`private/apple-touch-icon.png`、`private/favicon-32x32.png` の順で候補が選ばれます。
