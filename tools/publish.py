@@ -49,7 +49,7 @@ def save_history(path: Path, history: History) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     items = sorted(history.items(), key=lambda x: x[0])
     with path.open("w", encoding="utf-8", newline="") as f:
-        writer = csv.writer(f)
+        writer = csv.writer(f, lineterminator="\n")
         for filename, (h, ts) in items:
             writer.writerow([filename, h, ts])
 
