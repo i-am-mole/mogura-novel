@@ -19,6 +19,7 @@ from editor.repository import (
 )
 from story import Story
 from editor.widgets import PairListEditor
+from editor.search_dialog import SearchDialog
 
 
 class NovelEditorApp:
@@ -38,6 +39,7 @@ class NovelEditorApp:
         self.content_font_var = tk.StringVar(value="Arial")
         self.tree_refs: dict[str, tuple[str, ...]] = {}
         self.suppress_tree_event = False
+        self.search_dialog = None
         self.status_var = tk.StringVar(value="準備完了")
         self.count_var = tk.StringVar(value="文字数: —")
         self.preview = PreviewManager(self.repo.root, self._preview_callback)
@@ -45,6 +47,7 @@ class NovelEditorApp:
         self.refresh_tree()
         self.window.protocol("WM_DELETE_WINDOW", self._on_close)
         self.window.bind_all("<Control-s>", lambda _event: self.save_current())
+        self.window.bind_all("<Control-f>", self.show_search)
         self.window.bind_all("<Control-Shift-R>", lambda _event: self.insert_ruby())
 
     def run(self) -> None:
@@ -65,6 +68,9 @@ class NovelEditorApp:
         ]
         for label, command in buttons:
             ttk.Button(toolbar, text=label, command=command).pack(side="left", padx=2)
+        self.search_button = ttk.Button(toolbar, text="検索", command=self.show_search,
+                                        state="disabled")
+        self.search_button.pack(side="left", padx=2)
         installed_fonts = sorted(set(tkfont.families(self.window)), key=str.casefold)
         if "Arial" not in installed_fonts:
             installed_fonts.insert(0, "Arial")
@@ -197,6 +203,7 @@ class NovelEditorApp:
             return
         iid = selection[0]
         ref = self.tree_refs.get(iid)
+        self._update_search_state()
         if ref is None:
             return
         if self.current_ref and ref != self.current_ref and not self._confirm_abandon():
@@ -221,10 +228,43 @@ class NovelEditorApp:
                 self._show_story(document, ref[1], ref[2])
             self.current_ref = ref
             self.current_doc = document
+            self._update_search_state()
             self.status_var.set(str(document.path.relative_to(self.repo.root)))
             self._content_changed()
         except Exception as exc:
             messagebox.showerror("読み込みエラー", str(exc), parent=self.window)
+
+    def can_search(self) -> bool:
+        if not self.current_doc or not self.current_ref or self.current_ref[0] not in {"work", "story"}:
+            return False
+        selection = self.tree.selection()
+        return not selection or self.tree_refs.get(selection[0]) == self.current_ref
+
+    def _update_search_state(self) -> None:
+        self.search_button.configure(state="normal" if self.can_search() else "disabled")
+        if self.search_dialog is not None:
+            self.search_dialog.update_target()
+
+    def show_search(self, _event=None):
+        if self.can_search():
+            if self.search_dialog is None:
+                self.search_dialog = SearchDialog(self)
+            else:
+                self.search_dialog.lift()
+                self.search_dialog.query.focus_set()
+        return "break"
+
+    def open_search_hit(self, path: Path) -> None:
+        ref = (("work", path.parent.name) if path.name == "index.md"
+               else ("story", path.parent.name, path.stem))
+        if ref == self.current_ref:
+            return
+        if not self._confirm_abandon():
+            return
+        self.open_ref(ref)
+        if self.current_ref == ref:
+            self.refresh_tree(select_ref=ref)
+            self._update_search_state()
 
     def _clear_editor(self) -> None:
         for child in self.editor.winfo_children():
